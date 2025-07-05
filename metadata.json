@@ -1,0 +1,6 @@
+{
+  "name": "Barber Booking System",
+  "description": "A web application for customers to book appointments with barbers. Site owners can configure barber schedules and availability.",
+  "prompt": "",
+  "requestFramePermissions": []
+}

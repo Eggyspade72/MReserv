@@ -1,0 +1,171 @@
+
+import React from 'react';
+import { Barber, Appointment, TimeSlotDisplayInfo } from '../types';
+import { ClockIcon, LockClosedIcon, HomeIcon } from './Icons';
+import { useLanguage } from '../contexts/LanguageContext';
+
+interface BarberScheduleDisplayProps {
+  barber: Barber;
+  appointments: Appointment[];
+  displayDate: Date;
+  onSelectSlot: (slotStartTime: string) => void;
+  bookingType: 'in-shop' | 'on-location';
+}
+
+const timeToMinutes = (timeStr: string): number => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+const minutesToTime = (totalMinutes: number): string => {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
+const BarberScheduleDisplay: React.FC<BarberScheduleDisplayProps> = ({
+  barber,
+  appointments,
+  displayDate,
+  onSelectSlot,
+  bookingType,
+}) => {
+  const { t, language } = useLanguage();
+
+  const displayDateString = displayDate.toISOString().split('T')[0];
+  const dayOfWeek = displayDate.getDay();
+  const override = barber.scheduleOverrides[displayDateString];
+  
+  let isWorkingToday: boolean;
+
+  // Check for multi-day vacations/time off first, as it's a hard block
+  const isOnHoliday = barber.timeOff.some(off => {
+    const start = new Date(`${off.startDate}T00:00:00`);
+    const end = new Date(`${off.endDate}T23:59:59`);
+    return displayDate >= start && displayDate <= end;
+  });
+
+  if (override !== undefined) {
+    // A specific rule for this day takes precedence over recurring rules
+    isWorkingToday = !override.closed;
+  } else {
+    // No specific rule, use the recurring schedule based on booking type
+    const isDayAvailableForOnLocation = barber.onLocationDays.includes(dayOfWeek);
+    const isDayAvailableForInShop = !barber.recurringClosedDays.includes(dayOfWeek);
+
+    if (barber.onLocationMode === 'exclusive') {
+        isWorkingToday = isDayAvailableForOnLocation;
+    } else if (barber.onLocationMode === 'optional') {
+        isWorkingToday = bookingType === 'in-shop' ? isDayAvailableForInShop : isDayAvailableForOnLocation;
+    } else { // 'none'
+        isWorkingToday = isDayAvailableForInShop;
+    }
+  }
+
+  // A holiday overrides any working day decision
+  if (isOnHoliday) {
+      isWorkingToday = false;
+  }
+  
+  if (!isWorkingToday) {
+     return (
+        <div className="bg-neutral-100 dark:bg-neutral-700 p-6 rounded-lg shadow-inner text-center">
+            <LockClosedIcon className="w-12 h-12 mx-auto text-amber-500 mb-3" />
+            <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-200 mb-2">
+                {isOnHoliday ? t('barberOnHoliday') : t('barberNotWorkingToday')}
+            </h3>
+        </div>
+      );
+  }
+
+  const GRID_RESOLUTION_MINUTES = 15;
+  const timeSlots: TimeSlotDisplayInfo[] = [];
+  const startMinutes = timeToMinutes(barber.workStartTime);
+  const endMinutes = timeToMinutes(barber.workEndTime);
+    
+  const now = new Date();
+
+  for (let i = startMinutes; i < endMinutes; i += GRID_RESOLUTION_MINUTES) {
+    const slotStartTime = minutesToTime(i);
+    const slotEndTime = minutesToTime(i + GRID_RESOLUTION_MINUTES);
+    
+    const isBooked = appointments.some(apt => {
+        const apptStartMinutes = timeToMinutes(apt.slotTime);
+        const apptEndMinutes = apptStartMinutes + apt.totalDuration;
+        return i >= apptStartMinutes && i < apptEndMinutes;
+    });
+    
+    const [hours, minutes] = slotStartTime.split(':').map(Number);
+    const slotDateTime = new Date(
+      displayDate.getFullYear(),
+      displayDate.getMonth(),
+      displayDate.getDate(),
+      hours,
+      minutes,
+      0, 0
+    );
+    const isPast = slotDateTime < now;
+
+    timeSlots.push({
+      startTime: slotStartTime,
+      endTime: slotEndTime,
+      isBooked,
+      isPast,
+    });
+  }
+
+  if (timeSlots.length === 0) {
+    return <p className="text-center text-neutral-500 dark:text-neutral-400 py-8">{t('noTimeSlotsAvailableDate', {date: displayDate.toLocaleDateString(language)})}</p>;
+  }
+
+  const title = bookingType === 'in-shop' 
+    ? t('availableTimeSlotsTitle') 
+    : t('availableOnLocationTimeSlotsTitle');
+  const Icon = bookingType === 'in-shop' ? ClockIcon : HomeIcon;
+
+  return (
+    <div className="bg-neutral-100 dark:bg-neutral-700 p-6 rounded-lg shadow-inner">
+      <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-200 mb-6 text-center flex items-center justify-center gap-2">
+        <Icon className="w-6 h-6" />
+        {title}
+      </h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+        {timeSlots.map(slot => (
+          <button
+            type="button"
+            key={slot.startTime}
+            onClick={() => !slot.isBooked && !slot.isPast && onSelectSlot(slot.startTime)}
+            disabled={slot.isBooked || slot.isPast}
+            className={`p-3 rounded-md text-sm font-medium transition-all duration-200 ease-in-out flex flex-col items-center
+              ${
+                slot.isBooked || slot.isPast
+                  ? 'bg-neutral-200 dark:bg-neutral-600 text-neutral-400 dark:text-neutral-500 cursor-not-allowed opacity-70'
+                  : 'bg-secondary hover:bg-emerald-600 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
+              } ${slot.isBooked ? 'line-through' : ''}`}
+            aria-label={
+                slot.isBooked 
+                  ? t('ariaSlotBooked', { time: slot.startTime }) 
+                  : slot.isPast 
+                  ? t('ariaSlotPast', { time: slot.startTime })
+                  : t('ariaSelectSlot', { time: slot.startTime })
+            }
+          >
+            <div className="flex items-center justify-center mb-1">
+              {slot.isBooked ? <LockClosedIcon className="w-4 h-4 mr-1" /> : <ClockIcon className="w-4 h-4 mr-1" />}
+              <span>{slot.startTime}</span>
+            </div>
+             <span className="text-xs opacity-80 dark:text-neutral-300">
+                {slot.isBooked 
+                    ? t('bookedStatus') 
+                    : slot.isPast 
+                    ? t('pastStatus') 
+                    : t('availableLabel')}
+             </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default BarberScheduleDisplay;
