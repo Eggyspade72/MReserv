@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Business } from '../types';
-import { BuildingStorefrontIcon, TrashIcon, PencilIcon, SaveIcon } from './Icons';
+import { BuildingStorefrontIcon, TrashIcon, PencilIcon, SaveIcon, ExclamationTriangleIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface BusinessConfigRowProps {
@@ -31,7 +31,7 @@ const BusinessConfigRow: React.FC<BusinessConfigRowProps> = ({ business, onManag
         setIsEditing(false);
     };
 
-    const handleFieldChange = (field: keyof Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>, value: string) => {
+    const handleFieldChange = (field: keyof Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>, value: string | number | boolean) => {
         setEditableBusiness(prev => ({...prev, [field]: value}));
     };
 
@@ -55,6 +55,25 @@ const BusinessConfigRow: React.FC<BusinessConfigRowProps> = ({ business, onManag
                         <label className="text-xs font-bold text-neutral-500 dark:text-neutral-300">{t('ownerEmailLabel')}</label>
                         <input type="email" value={editableBusiness.ownerEmail || ''} onChange={(e) => handleFieldChange('ownerEmail', e.target.value)} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-700"/>
                     </div>
+                </div>
+                 <div className="p-3 bg-neutral-100 dark:bg-neutral-700 rounded-lg">
+                    <h4 className="text-base font-semibold mb-3">{t('cancellationFeeTitle')}</h4>
+                    <div className="flex items-center mb-3">
+                        <input type="checkbox" id={`enableCancellation-${editableBusiness.id}`} checked={!!editableBusiness.enableCancellationFee} onChange={e => handleFieldChange('enableCancellationFee', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                        <label htmlFor={`enableCancellation-${editableBusiness.id}`} className="ms-2 text-sm text-neutral-600 dark:text-neutral-300">{t('enableCancellationFeeLabelBusiness')}</label>
+                    </div>
+                    {editableBusiness.enableCancellationFee && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeHoursLabel')}</label>
+                            <input type="number" value={editableBusiness.cancellationFeeHours} onChange={e => handleFieldChange('cancellationFeeHours', parseInt(e.target.value) || 0)} className="w-full p-2 rounded-md bg-white dark:bg-neutral-800 text-sm"/>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeAmountLabel')}</label>
+                            <input type="number" step="0.01" value={editableBusiness.cancellationFeeAmount} onChange={e => handleFieldChange('cancellationFeeAmount', parseFloat(e.target.value) || 0 )} className="w-full p-2 rounded-md bg-white dark:bg-neutral-800 text-sm"/>
+                        </div>
+                    </div>
+                    )}
                 </div>
                 <div className="flex gap-2 justify-end pt-2">
                     <button onClick={handleCancel} className="px-4 py-2 bg-neutral-200 dark:bg-neutral-500 text-black dark:text-white font-medium rounded-md transition duration-150 text-sm">{t('cancelButton')}</button>

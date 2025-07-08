@@ -1,5 +1,15 @@
 import type { Language } from './translations';
+import type { Database } from './services/db_types';
 
+// Get Row types from generated db types
+type BusinessRow = Database['public']['Tables']['businesses']['Row'];
+type BarberRow = Database['public']['Tables']['barbers']['Row'];
+type AppointmentRow = Database['public']['Tables']['appointments']['Row'];
+type ExpenseRow = Database['public']['Tables']['expenses']['Row'];
+type AppConfigRow = Database['public']['Tables']['app_config']['Row'];
+
+
+// These are custom types for the app, not directly from DB schema
 export interface Service {
   id: string;
   name: string;
@@ -14,90 +24,47 @@ export interface TimeOff {
     reason?: string;
 }
 
-export interface Expense {
-  id: string;
-  name: string;
-  amount: number;
-  type: 'monthly' | 'yearly' | 'one-time';
-  dateAdded: string; // YYYY-MM-DD
+export interface BlockedSlot {
+    id: string;
+    date: string; // YYYY-MM-DD
+    startTime: string; // HH:mm
+    duration: number; // in minutes
 }
 
 export type ThemeName = 'default' | 'oceanic' | 'sunset';
 
-export interface Business {
-  id: string;
-  name: string;
-  ownerName?: string;
-  ownerEmail?: string;
-  address?: string;
-  theme?: ThemeName;
-  // Subscription fields moved from Barber
-  subscriptionStatus: 'active' | 'trial' | 'past_due' | 'cancelled';
-  subscriptionValidUntil: string; // YYYY-MM-DD
-  customSubscriptionPrice?: number; // Optional custom price for this business
-  suppressGracePeriodWarning?: boolean; // Optional flag to disable warnings
+// Main application types, extending DB row types and overriding where needed
+export interface Business extends BusinessRow {
+  theme: ThemeName | null;
 }
 
-export interface Barber {
-  id: string;
-  name: string;
-  username: string;
-  password?: string;
-  workStartTime: string; // HH:mm format
-  workEndTime: string;   // HH:mm format
-  avatarUrl?: string;
-  phoneNumber?: string;
-  businessId: string; // Link to a Business
-  preferredLanguage?: Language;
-  allowedLanguages?: Language[];
-  
-  // New granular scheduling as per user spec
-  /** 0 = Sunday, 1 = Monday, … 6 = Saturday */
-  recurringClosedDays: number[];              // weekdays that are always closed
-  scheduleOverrides: Record<string, { closed: boolean }>; // 'YYYY-MM-DD' → { closed: boolean }
+// Use Omit to handle the Json type mismatch between db and app.
+export interface Barber extends Omit<BarberRow, 'services' | 'timeOff' | 'blockedSlots' | 'scheduleOverrides'> {
+  services: Service[];
   timeOff: TimeOff[];
-  
-  bookableDaysInAdvance: number; // How many days in the future a customer can book
-
-  // Service management
-  services: Service[];
-  showPricesOnBooking?: boolean; // Controls if prices are shown to customers
-  showServicesOnSelector?: boolean; // New: Barber-level control for service visibility
-
-  // On-location settings
-  onLocationMode: 'none' | 'optional' | 'exclusive'; // 'none', 'optional' (both), or 'exclusive' (only on-location)
-  onLocationDays: number[]; // Specific days for on-location services if not always available
+  scheduleOverrides: Record<string, { closed: boolean }>;
+  blockedSlots: BlockedSlot[];
+  preferredLanguage: Language | null;
+  allowedLanguages: Language[] | null;
 }
 
+// Use Omit to handle the Json type mismatch between db and app.
+export interface Appointment extends Omit<AppointmentRow, 'services'> {
+  services: Service[];
+}
+
+export interface Expense extends ExpenseRow {}
+
+export interface AppConfig extends AppConfigRow {}
+
+
+// Other types used in the UI
 export type AppointmentStatus = 'booked' | 'completed' | 'cancelled' | 'no-show';
-
-export interface Appointment {
-  id: string;
-  barberId: string;
-  businessId: string; // Link to a Business
-  date: string; // YYYY-MM-DD format
-  slotTime: string; // HH:mm format, start time of the slot
-  customerName: string;
-  customerPhone: string;
-  
-  // New service-based details
-  services: Service[];
-  totalDuration: number; // in minutes
-  totalPrice: number;
-  status: AppointmentStatus;
-}
 
 export interface TimeSlotDisplayInfo {
   startTime: string; // HH:mm format
   endTime: string;   // HH:mm format
   isBooked: boolean;
   isPast: boolean;
-}
-
-export interface AppConfig {
-  appName: string;
-  showServicesOnSelector: boolean;
-  allowBarberLanguageControl: boolean;
-  defaultSubscriptionPrice: number;
-  contactEmail?: string;
+  isWalkinOnly: boolean;
 }

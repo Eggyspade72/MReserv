@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import { Barber, Appointment, Service, TimeOff } from '../types';
 import {
@@ -81,20 +82,17 @@ const BarberConfigRow: React.FC<BarberConfigRowProps> = ({ barber, appointments,
 
 
   const handleSave = () => {
-    if (!editableBarber.name.trim() || !editableBarber.username.trim()) {
+    if (!editableBarber.name.trim() || !editableBarber.email.trim()) {
       alert(t('alertBarberNameUsernameEmpty'));
       return;
     }
-    onUpdateBarber({
-      ...editableBarber,
-      password: editableBarber.password?.trim() === '' ? undefined : editableBarber.password
-    });
+    onUpdateBarber(editableBarber);
     setIsEditing(false);
   };
 
   const barberAppointments = appointments
       .filter(apt => new Date(apt.date) >= new Date(new Date().setHours(0,0,0,0)))
-      .sort((a, b) => new Date(`${a.date}T${a.slotTime}`).getTime() - new Date(`${b.date}T${b.slotTime}`).getTime());
+      .sort((a, b) => new Date(`${a.date}T${a.slotTime}`).getTime() - new Date(`${b.date}T${a.slotTime}`).getTime());
   
   const handleRemoveClick = () => {
     showConfirmation({
@@ -124,7 +122,7 @@ const BarberConfigRow: React.FC<BarberConfigRowProps> = ({ barber, appointments,
         <div className="flex items-center mb-2 sm:mb-0">
           {barber.avatarUrl && <img src={barber.avatarUrl} alt={barber.name} className="w-10 h-10 rounded-full me-3 border-2 border-primary object-cover" />}
           <h3 className="text-lg md:text-xl font-medium text-primary flex items-center">
-            {barber.name} <span className="text-sm text-neutral-500 dark:text-neutral-400 ms-2">(@{barber.username})</span>
+            {barber.name} <span className="text-sm text-neutral-500 dark:text-neutral-400 ms-2">({barber.email})</span>
           </h3>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -155,10 +153,9 @@ const BarberConfigRow: React.FC<BarberConfigRowProps> = ({ barber, appointments,
       {isEditing ? (
         <div className="space-y-4 mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
             {/* Personal Details */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                 <div><label className="block text-xs font-medium">{t('fullNameLabel')}</label><input type="text" value={editableBarber.name} onChange={e => handleChange('name', e.target.value)} className={serviceInputClasses} /></div>
-                <div><label className="block text-xs font-medium">{t('usernameLabel')}</label><input type="text" value={editableBarber.username} onChange={e => handleChange('username', e.target.value)} className={serviceInputClasses} /></div>
-                <div><label className="block text-xs font-medium">{t('newPasswordOptionalLabel')}</label><input type="password" placeholder={t('leaveBlankToKeepCurrent')} onChange={e => handleChange('password', e.target.value)} className={serviceInputClasses} /></div>
+                <div><label className="block text-xs font-medium">{t('ownerEmailLabel')}</label><input type="email" value={editableBarber.email} onChange={e => handleChange('email', e.target.value)} className={`${serviceInputClasses} bg-neutral-200 dark:bg-neutral-800`} readOnly disabled title="Email cannot be changed after creation." /></div>
             </div>
             {/* Service Management */}
             <div className="p-3 bg-neutral-200 dark:bg-neutral-700 rounded-md">

@@ -1,12 +1,13 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { BriefcaseIcon, UserCircleIcon, LockClosedIcon, CheckCircleIcon, XCircleIcon } from './Icons';
+import { BriefcaseIcon, AtSymbolIcon, LockClosedIcon, CheckCircleIcon, XCircleIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface BarberLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginAttempt: (username: string, passwordAttempt: string) => void;
+  onLoginAttempt: (email: string, passwordAttempt: string) => void;
   error: string;
 }
 
@@ -17,19 +18,19 @@ const BarberLoginModal: React.FC<BarberLoginModalProps> = ({
   error,
 }) => {
   const { t } = useLanguage();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      setUsername('');
+      setEmail('');
       setPassword('');
     }
   }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onLoginAttempt(username, password); 
+    onLoginAttempt(email, password); 
   };
 
   if (!isOpen) return null;
@@ -53,20 +54,20 @@ const BarberLoginModal: React.FC<BarberLoginModalProps> = ({
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="barberUsername" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-              {t('usernameLabel')}
+            <label htmlFor="barberEmail" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+              {t('ownerEmailLabel')}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <UserCircleIcon className="w-5 h-5 text-neutral-400" />
+                <AtSymbolIcon className="w-5 h-5 text-neutral-400" />
               </div>
               <input
-                type="text"
-                id="barberUsername"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
+                type="email"
+                id="barberEmail"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 className="w-full pl-10 pr-3 py-2.5 bg-neutral-100 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-md focus:ring-secondary focus:border-secondary placeholder-neutral-500 dark:placeholder-neutral-400"
-                placeholder={t('barberUsernamePlaceholder')}
+                placeholder="email@example.com"
                 required
                 aria-required="true"
               />

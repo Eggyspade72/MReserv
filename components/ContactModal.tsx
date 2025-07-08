@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { MailIcon, XCircleIcon } from './Icons';
@@ -20,22 +21,24 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, contactEma
         aria-modal="true"
         aria-labelledby="contact-modal-title"
     >
-      <div className="bg-white dark:bg-neutral-800 p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-100">
-        <div className="flex justify-between items-center mb-4">
-            <h3 id="contact-modal-title" className="text-xl leading-6 font-semibold text-primary flex items-center gap-2">
-                <MailIcon className="w-6 h-6"/>
+      <div className="relative bg-white dark:bg-neutral-800 p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-100">
+        <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-3 right-3 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+            aria-label={t('closeButton')}
+        >
+            <XCircleIcon className="w-7 h-7" />
+        </button>
+        
+        <div className="flex items-center gap-3 mb-4">
+            <MailIcon className="w-8 h-8 text-primary"/>
+            <h3 id="contact-modal-title" className="text-xl leading-6 font-semibold text-primary">
                 {t('contactModalTitle')}
             </h3>
-            <button
-                type="button"
-                onClick={onClose}
-                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
-                aria-label={t('closeButton')}
-            >
-                <XCircleIcon className="w-7 h-7" />
-            </button>
         </div>
-        <div className="mt-2 text-center">
+
+        <div className="mt-2 text-left">
             {contactEmail ? (
                 <>
                     <p className="text-sm text-neutral-600 dark:text-neutral-300">

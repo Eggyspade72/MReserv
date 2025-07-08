@@ -1,17 +1,20 @@
 
 
+
 import React, { useState, useRef, useEffect } from 'react';
+import type { Session as SupabaseSession } from '@supabase/supabase-js';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Barber } from '../types';
 import { ChevronDownIcon, LoginIcon, LogoutIcon, UserCircleIcon } from './Icons';
 
-type Session = {
-    type: 'barber' | 'owner';
-    user?: Barber;
+type AppSession = {
+    auth: SupabaseSession;
+    profile: Barber | null; // For barbers
+    isOwner: boolean;
 } | null;
 
 interface AuthMenuProps {
-  session: Session;
+  session: AppSession;
   onLogout: () => void;
   onLoginClick: () => void;
 }
@@ -46,7 +49,9 @@ const AuthMenu: React.FC<AuthMenuProps> = ({ session, onLogout, onLoginClick }) 
     )
   }
 
-  const name = session.type === 'barber' ? session.user?.name.split(' ')[0] : 'Owner';
+  const name = session.isOwner 
+    ? session.auth.user.user_metadata.name || 'Owner'
+    : session.profile?.name.split(' ')[0] || 'Barber';
 
   return (
     <div className="relative" ref={wrapperRef}>
@@ -69,8 +74,8 @@ const AuthMenu: React.FC<AuthMenuProps> = ({ session, onLogout, onLoginClick }) 
           aria-orientation="vertical"
         >
           <div className="px-4 py-2 border-b border-neutral-200 dark:border-neutral-700">
-            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">{session.user?.name || 'Owner'}</p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 capitalize">{session.type}</p>
+            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">{session.isOwner ? 'Super Admin' : session.profile?.name}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{session.auth.user.email}</p>
           </div>
           <button
             onClick={() => { onLogout(); closeMenu(); }}

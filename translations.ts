@@ -1,3 +1,5 @@
+
+
 export const englishTranslations = {
   // App General
   appName: "MReserv",
@@ -34,17 +36,23 @@ export const englishTranslations = {
   backToBusinessList: "Back to Business List",
   editBusinessName: "Edit Business Name",
   saveBusinessName: "Save Name",
+  retryButton: "Retry",
 
-  // Admin Login Modal
+  // Unified Login
+  loginTitle: "Login",
+  errorInvalidCredentials: "Invalid email or password.",
+
+  // Admin Login Modal (Legacy, kept for key safety)
   adminLoginTitle: "Admin Login",
   usernameLabel: "Username",
   passwordLabel: "Password",
   usernamePlaceholder: "Enter username",
-  passwordPlaceholder: "Enter password",
+  passwordPlaceholder: "Enter your password",
+  emailPlaceholder: "name@example.com",
   errorInvalidAdminCredentials: "Invalid admin username or password.",
   ariaCloseLoginModal: "Close login modal",
 
-  // Barber Login Modal
+  // Barber Login Modal (Legacy, kept for key safety)
   barberLoginTitle: "Barber Login",
   barberUsernamePlaceholder: "Enter your username",
   barberPasswordPlaceholder: "Enter your password",
@@ -75,6 +83,8 @@ export const englishTranslations = {
   selectServicesTitle: "Select Services",
   totalPrice: "Total Price",
   totalDuration: "Total Duration",
+  waitlistCheckboxLabel: "Notify me if an earlier slot becomes available",
+  cancellationWarning: "Please note: A fee of €{amount} may be charged for cancellations made within {hours} hours of the appointment.",
 
   // Barber Selector
   noBarbersAvailable: "No barbers available at the moment.",
@@ -94,9 +104,11 @@ export const englishTranslations = {
   availableOnLocationTimeSlotsTitle: "Available On-Location Slots",
   bookedStatus: "Booked",
   pastStatus: "Past",
+  walkinOnlyStatus: "Walk-in Only",
   untilTime: "until {time}",
   ariaSlotBooked: "Slot at {time} is booked",
   ariaSlotPast: "Slot at {time} is in the past and unavailable",
+  ariaSlotWalkinOnly: "Slot at {time} is for walk-ins only",
   ariaSelectSlot: "Select slot at {time}",
   barberNotAcceptingAppointmentsTitle: "Appointments Closed",
   barberNotAcceptingAppointmentsMsg: "{name} is currently not accepting new appointments.",
@@ -192,11 +204,28 @@ export const englishTranslations = {
   language_ar: "Arabic",
   allowedCustomerLanguagesTitle: "Allowed Customer Languages",
   allowedCustomerLanguagesDescription: "Select which languages customers can use on your booking page.",
-  
+  enableWaitlistFeatureLabel: "Enable Waitlist Feature (Global)",
+  enableMyWaitlistLabel: "Enable my personal waitlist",
+  enableWalkinBufferFeatureLabel: "Enable Walk-in Buffer (Global)",
+  enableMyWalkinBufferLabel: "Enable my walk-in buffer",
+  walkinBufferMinutesLabel: "Block slots for walk-ins (minutes before)",
+  blockTimeSlotTitle: "Block Time Slot for Walk-ins",
+  blockDurationLabel: "Duration",
+  addBlockButton: "Add Block",
+  activeBlockedSlots: "Active Time Blocks",
+  startTimeLabel: "Start Time",
+  enableCancellationFeeLabel: "Enable Cancellation Fee Warning (Global)",
+  enableCancellationFeeLabelBusiness: "Enable cancellation fee warning for this business",
+  cancellationFeeTitle: "Cancellation Fee Policy",
+  cancellationFeeHoursLabel: "Cancellation Window (Hours)",
+  cancellationFeeAmountLabel: "Fee Amount (€)",
+
+
   // Barber Dashboard
   dashboardTab_schedule: "Schedule & Services",
   dashboardTab_history: "Appointment History",
   dashboardTab_earnings: "Earnings Analysis",
+  dashboardTab_waitlist: "Waitlist",
   welcomeBarberDashboard: "Welcome, {name}!",
   myDetailsAndScheduleTitle: "My Details & Profile",
   ariaSaveChanges: "Save my details",
@@ -298,7 +327,7 @@ export const englishTranslations = {
   businessNamePlaceholder: "e.g., Cool Cuts Inc.",
   ownerNameLabel: "Owner's Name",
   ownerNamePlaceholder: "e.g., Jane Doe",
-  ownerEmailLabel: "Owner's Email",
+  ownerEmailLabel: "Owner's Email Address",
   ownerEmailPlaceholder: "e.g., owner@coolcuts.com",
   alertBusinessNameRequired: "Business name is required.",
   financialOverviewTitle: "Financial Overview",
@@ -345,10 +374,19 @@ export const englishTranslations = {
   theme_sunset: "Sunset",
   
   // Contact Modal
-  contactModalTitle: "Thank you for your interest!",
-  contactModalBody: "Do you want to use this system for your business? Send us an email at: {email}",
+  contactModalTitle: "Request More Information",
+  contactModalBody: "Interested in this system for your business? Contact us for more information at: {email}",
   contactModalNoEmail: "The business owner has not yet configured a contact email address. Please check back later.",
-  contactModalSubtitle: "This is completely non-binding."
+  contactModalSubtitle: "We are happy to assist you with a no-obligation consultation.",
+  
+  // Network Error Modal
+  networkErrorModalTitle: "Connection Error",
+  networkErrorModalMessage: "The application could not connect to the database. This is often a Cross-Origin Resource Sharing (CORS) issue.",
+  networkErrorModalInstructionsTitle: "How to fix:",
+  networkErrorModalInstruction1: "1. Go to your Supabase project dashboard.",
+  networkErrorModalInstruction2: "2. Navigate to Project Settings > API.",
+  networkErrorModalInstruction3: "3. Under 'CORS Origins', add your app's URL: {appUrl}",
+  networkErrorModalInstruction4: "4. Click 'Save' and then retry."
 };
 
 export const dutchTranslations = {
@@ -387,17 +425,23 @@ export const dutchTranslations = {
   backToBusinessList: "Terug naar Zakenlijst",
   editBusinessName: "Zaaksnaam Bewerken",
   saveBusinessName: "Naam Opslaan",
+  retryButton: "Opnieuw proberen",
   
-  // Admin Login Modal
+  // Unified Login
+  loginTitle: "Inloggen",
+  errorInvalidCredentials: "Ongeldig e-mailadres of wachtwoord.",
+
+  // Admin Login Modal (Legacy, kept for key safety)
   adminLoginTitle: "Admin Login",
   usernameLabel: "Gebruikersnaam",
   passwordLabel: "Wachtwoord",
   usernamePlaceholder: "Voer gebruikersnaam in",
-  passwordPlaceholder: "Voer wachtwoord in",
+  passwordPlaceholder: "Voer uw wachtwoord in",
+  emailPlaceholder: "naam@voorbeeld.com",
   errorInvalidAdminCredentials: "Ongeldige admin gebruikersnaam of wachtwoord.",
   ariaCloseLoginModal: "Sluit login venster",
 
-  // Barber Login Modal
+  // Barber Login Modal (Legacy, kept for key safety)
   barberLoginTitle: "Kapper Login",
   barberUsernamePlaceholder: "Voer uw gebruikersnaam in",
   barberPasswordPlaceholder: "Voer uw wachtwoord in",
@@ -428,6 +472,8 @@ export const dutchTranslations = {
   selectServicesTitle: "Selecteer Diensten",
   totalPrice: "Totaalprijs",
   totalDuration: "Totale Duur",
+  waitlistCheckboxLabel: "Verwittig mij als er een vroegere plaats vrijkomt",
+  cancellationWarning: "Let op: er kan een kost van €{amount} in rekening worden gebracht bij annulering binnen {hours} uur voor de afspraak.",
 
   // Barber Selector
   noBarbersAvailable: "Geen kappers beschikbaar op dit moment.",
@@ -447,9 +493,11 @@ export const dutchTranslations = {
   availableOnLocationTimeSlotsTitle: "Beschikbare Slots (Op Locatie)",
   bookedStatus: "Geboekt",
   pastStatus: "Verleden",
+  walkinOnlyStatus: "Enkel in de zaak",
   untilTime: "tot {time}",
   ariaSlotBooked: "Tijdslot om {time} is geboekt",
   ariaSlotPast: "Tijdslot om {time} is in het verleden en niet beschikbaar",
+  ariaSlotWalkinOnly: "Tijdslot om {time} is enkel voor inloopklanten",
   ariaSelectSlot: "Kies tijdslot om {time}",
   barberNotAcceptingAppointmentsTitle: "Afspraken Gesloten",
   barberNotAcceptingAppointmentsMsg: "{name} accepteert momenteel geen nieuwe afspraken.",
@@ -544,11 +592,27 @@ export const dutchTranslations = {
   language_ar: "Arabisch",
   allowedCustomerLanguagesTitle: "Toegestane Klanttalen",
   allowedCustomerLanguagesDescription: "Selecteer welke talen klanten kunnen gebruiken op uw boekingspagina.",
+  enableWaitlistFeatureLabel: "Wachtlijst-functie Inschakelen (Globaal)",
+  enableMyWaitlistLabel: "Mijn persoonlijke wachtlijst inschakelen",
+  enableWalkinBufferFeatureLabel: "Inloop-buffer Inschakelen (Globaal)",
+  enableMyWalkinBufferLabel: "Mijn inloop-buffer inschakelen",
+  walkinBufferMinutesLabel: "Blokkeer slots voor inloop (minuten vooraf)",
+  blockTimeSlotTitle: "Blokkeer Tijdslot voor Inloop",
+  blockDurationLabel: "Duur",
+  addBlockButton: "Blok Toevoegen",
+  activeBlockedSlots: "Actieve Geblokkeerde Slots",
+  startTimeLabel: "Starttijd",
+  enableCancellationFeeLabel: "Annulatiekosten Waarschuwing Inschakelen (Globaal)",
+  enableCancellationFeeLabelBusiness: "Annulatiekosten waarschuwing inschakelen voor deze zaak",
+  cancellationFeeTitle: "Annuleringsvoorwaarden",
+  cancellationFeeHoursLabel: "Annulatietermijn (Uren)",
+  cancellationFeeAmountLabel: "Boetebedrag (€)",
 
   // Barber Dashboard
   dashboardTab_schedule: "Schema & Diensten",
   dashboardTab_history: "Afspraakgeschiedenis",
   dashboardTab_earnings: "Inkomstenanalyse",
+  dashboardTab_waitlist: "Wachtlijst",
   welcomeBarberDashboard: "Welkom, {name}!",
   myDetailsAndScheduleTitle: "Mijn Gegevens & Profiel",
   ariaSaveChanges: "Mijn gegevens opslaan",
@@ -650,7 +714,7 @@ export const dutchTranslations = {
   businessNamePlaceholder: "bv. Cool Cuts BV",
   ownerNameLabel: "Naam Eigenaar",
   ownerNamePlaceholder: "bv. Jane Doe",
-  ownerEmailLabel: "E-mail Eigenaar",
+  ownerEmailLabel: "E-mailadres eigenaar",
   ownerEmailPlaceholder: "bv. eigenaar@coolcuts.com",
   alertBusinessNameRequired: "Naam van de zaak is verplicht.",
   financialOverviewTitle: "Financieel Overzicht",
@@ -697,10 +761,19 @@ export const dutchTranslations = {
   theme_sunset: "Zonsondergang",
   
   // Contact Modal
-  contactModalTitle: "Bedankt voor uw interesse!",
-  contactModalBody: "Wilt u dit systeem voor uw zaak inzetten? Stuur ons een mailtje op: {email}",
+  contactModalTitle: "Meer Informatie?",
+  contactModalBody: "Heeft u interesse in dit systeem voor uw zaak? Contacteer ons voor meer informatie via: {email}",
   contactModalNoEmail: "De eigenaar van de zaak heeft nog geen contact e-mailadres ingesteld. Probeer het later opnieuw.",
-  contactModalSubtitle: "Dit is geheel vrijblijvend."
+  contactModalSubtitle: "Wij helpen u graag verder met een vrijblijvend gesprek.",
+  
+  // Network Error Modal
+  networkErrorModalTitle: "Verbindingsfout",
+  networkErrorModalMessage: "De applicatie kon geen verbinding maken met de database. Dit is vaak een Cross-Origin Resource Sharing (CORS) probleem.",
+  networkErrorModalInstructionsTitle: "Hoe op te lossen:",
+  networkErrorModalInstruction1: "1. Ga naar uw Supabase project dashboard.",
+  networkErrorModalInstruction2: "2. Navigeer naar Project Settings > API.",
+  networkErrorModalInstruction3: "3. Voeg onder 'CORS Origins' de URL van uw app toe: {appUrl}",
+  networkErrorModalInstruction4: "4. Klik op 'Save' en probeer het opnieuw."
 };
 
 export const frenchTranslations = {
@@ -732,11 +805,15 @@ export const frenchTranslations = {
   backToBusinessList: "Retour à la liste des entreprises",
   editBusinessName: "Modifier le nom de l'entreprise",
   saveBusinessName: "Enregistrer le nom",
+  retryButton: "Réessayer",
+  loginTitle: "Connexion",
+  errorInvalidCredentials: "Adresse e-mail ou mot de passe invalide.",
   adminLoginTitle: "Connexion Admin",
   usernameLabel: "Nom d'utilisateur",
   passwordLabel: "Mot de passe",
   usernamePlaceholder: "Entrez votre nom d'utilisateur",
   passwordPlaceholder: "Entrez votre mot de passe",
+  emailPlaceholder: "nom@exemple.com",
   errorInvalidAdminCredentials: "Nom d'utilisateur ou mot de passe admin invalide.",
   ariaCloseLoginModal: "Fermer la fenêtre de connexion",
   barberLoginTitle: "Connexion Barbier",
@@ -767,6 +844,8 @@ export const frenchTranslations = {
   selectServicesTitle: "Sélectionnez les services",
   totalPrice: "Prix total",
   totalDuration: "Durée totale",
+  waitlistCheckboxLabel: "Me notifier si un créneau se libère plus tôt",
+  cancellationWarning: "Veuillez noter : des frais de {amount}€ peuvent être facturés pour les annulations effectuées dans les {hours} heures précédant le rendez-vous.",
   noBarbersAvailable: "Aucun barbier disponible pour le moment.",
   availableLabel: "Disponible",
   slotLabel: "Créneau",
@@ -782,9 +861,11 @@ export const frenchTranslations = {
   availableOnLocationTimeSlotsTitle: "Créneaux Disponibles (À domicile)",
   bookedStatus: "Réservé",
   pastStatus: "Passé",
+  walkinOnlyStatus: "En salon uniquement",
   untilTime: "jusqu'à {time}",
   ariaSlotBooked: "Le créneau de {time} est réservé",
   ariaSlotPast: "Le créneau de {time} est passé et indisponible",
+  ariaSlotWalkinOnly: "Le créneau à {time} est réservé aux visites sans rendez-vous",
   ariaSelectSlot: "Sélectionner le créneau de {time}",
   barberNotAcceptingAppointmentsTitle: "Rendez-vous Fermés",
   barberNotAcceptingAppointmentsMsg: "{name} n'accepte pas de nouveaux rendez-vous actuellement.",
@@ -874,9 +955,25 @@ export const frenchTranslations = {
   language_ar: "Arabe",
   allowedCustomerLanguagesTitle: "Langues client autorisées",
   allowedCustomerLanguagesDescription: "Sélectionnez les langues que les clients peuvent utiliser sur votre page de réservation.",
+  enableWaitlistFeatureLabel: "Activer la fonction de liste d'attente (Global)",
+  enableMyWaitlistLabel: "Activer ma liste d'attente personnelle",
+  enableWalkinBufferFeatureLabel: "Activer le tampon pour visites sans RDV (Global)",
+  enableMyWalkinBufferLabel: "Activer mon tampon pour visites sans RDV",
+  walkinBufferMinutesLabel: "Bloquer les créneaux pour visites sans RDV (minutes avant)",
+  blockTimeSlotTitle: "Bloquer un créneau pour les visites sans RDV",
+  blockDurationLabel: "Durée",
+  addBlockButton: "Ajouter un bloc",
+  activeBlockedSlots: "Blocs de temps actifs",
+  startTimeLabel: "Heure de début",
+  enableCancellationFeeLabel: "Activer l'avertissement de frais d'annulation (Global)",
+  enableCancellationFeeLabelBusiness: "Activer l'avertissement de frais d'annulation pour cette entreprise",
+  cancellationFeeTitle: "Politique d'annulation",
+  cancellationFeeHoursLabel: "Fenêtre d'annulation (Heures)",
+  cancellationFeeAmountLabel: "Montant des frais (€)",
   dashboardTab_schedule: "Horaire & Services",
   dashboardTab_history: "Historique des RDV",
   dashboardTab_earnings: "Analyse des revenus",
+  dashboardTab_waitlist: "Liste d'attente",
   welcomeBarberDashboard: "Bienvenue, {name} !",
   myDetailsAndScheduleTitle: "Mes Détails & Profil",
   ariaSaveChanges: "Enregistrer mes détails",
@@ -973,7 +1070,7 @@ export const frenchTranslations = {
   businessNamePlaceholder: "ex: Cool Cuts Inc.",
   ownerNameLabel: "Nom du propriétaire",
   ownerNamePlaceholder: "ex: Jane Doe",
-  ownerEmailLabel: "E-mail du propriétaire",
+  ownerEmailLabel: "Adresse e-mail du propriétaire",
   ownerEmailPlaceholder: "ex: owner@coolcuts.com",
   alertBusinessNameRequired: "Le nom de l'entreprise est requis.",
   financialOverviewTitle: "Aperçu Financier",
@@ -1020,10 +1117,19 @@ export const frenchTranslations = {
   theme_sunset: "Coucher de soleil",
   
   // Contact Modal
-  contactModalTitle: "Merci de votre intérêt !",
-  contactModalBody: "Voulez-vous utiliser ce système pour votre entreprise ? Envoyez-nous un e-mail à : {email}",
+  contactModalTitle: "Demander plus d'informations",
+  contactModalBody: "Intéressé par ce système pour votre entreprise ? Contactez-nous pour plus d'informations à : {email}",
   contactModalNoEmail: "Le propriétaire de l'entreprise n'a pas encore configuré d'adresse e-mail de contact. Veuillez réessayer plus tard.",
-  contactModalSubtitle: "Sans engagement, nous sommes heureux de vous aider."
+  contactModalSubtitle: "Nous sommes heureux de vous aider avec une consultation sans engagement.",
+  
+  // Network Error Modal
+  networkErrorModalTitle: "Erreur de Connexion",
+  networkErrorModalMessage: "L'application n'a pas pu se connecter à la base de données. Il s'agit souvent d'un problème de Cross-Origin Resource Sharing (CORS).",
+  networkErrorModalInstructionsTitle: "Comment résoudre :",
+  networkErrorModalInstruction1: "1. Allez dans le tableau de bord de votre projet Supabase.",
+  networkErrorModalInstruction2: "2. Naviguez vers Paramètres du projet > API.",
+  networkErrorModalInstruction3: "3. Sous 'Origines CORS', ajoutez l'URL de votre application : {appUrl}",
+  networkErrorModalInstruction4: "4. Cliquez sur 'Enregistrer' puis réessayez."
 };
 
 export const spanishTranslations = {
@@ -1055,11 +1161,15 @@ export const spanishTranslations = {
   backToBusinessList: "Volver a la lista de negocios",
   editBusinessName: "Editar Nombre del Negocio",
   saveBusinessName: "Guardar Nombre",
+  retryButton: "Reintentar",
+  loginTitle: "Iniciar Sesión",
+  errorInvalidCredentials: "Correo electrónico o contraseña no válidos.",
   adminLoginTitle: "Inicio de Sesión Admin",
   usernameLabel: "Usuario",
   passwordLabel: "Contraseña",
   usernamePlaceholder: "Introduzca su usuario",
   passwordPlaceholder: "Introduzca su contraseña",
+  emailPlaceholder: "nombre@ejemplo.com",
   errorInvalidAdminCredentials: "Usuario o contraseña de admin inválidos.",
   ariaCloseLoginModal: "Cerrar modal de inicio de sesión",
   barberLoginTitle: "Inicio de Sesión Barbero",
@@ -1090,6 +1200,8 @@ export const spanishTranslations = {
   selectServicesTitle: "Seleccionar Servicios",
   totalPrice: "Precio Total",
   totalDuration: "Duración Total",
+  waitlistCheckboxLabel: "Notifíquenme si hay un espacio disponible antes",
+  cancellationWarning: "Tenga en cuenta: se puede cobrar una tarifa de {amount}€ por cancelaciones realizadas dentro de las {hours} horas de la cita.",
   noBarbersAvailable: "No hay barberos disponibles en este momento.",
   availableLabel: "Disponible",
   slotLabel: "Turno",
@@ -1105,9 +1217,11 @@ export const spanishTranslations = {
   availableOnLocationTimeSlotsTitle: "Turnos Disponibles (A domicilio)",
   bookedStatus: "Reservado",
   pastStatus: "Pasado",
+  walkinOnlyStatus: "Solo en el local",
   untilTime: "hasta {time}",
   ariaSlotBooked: "El turno de las {time} está reservado",
   ariaSlotPast: "El turno de las {time} ya pasó y no está disponible",
+  ariaSlotWalkinOnly: "El turno a las {time} es solo para clientes sin cita",
   ariaSelectSlot: "Seleccionar turno de las {time}",
   barberNotAcceptingAppointmentsTitle: "Citas Cerradas",
   barberNotAcceptingAppointmentsMsg: "{name} no está aceptando nuevas citas actualmente.",
@@ -1197,9 +1311,25 @@ export const spanishTranslations = {
   language_ar: "Árabe",
   allowedCustomerLanguagesTitle: "Idiomas de cliente permitidos",
   allowedCustomerLanguagesDescription: "Seleccione qué idiomas pueden usar los clientes en su página de reservas.",
+  enableWaitlistFeatureLabel: "Habilitar la función de lista de espera (Global)",
+  enableMyWaitlistLabel: "Habilitar mi lista de espera personal",
+  enableWalkinBufferFeatureLabel: "Habilitar búfer para visitas sin cita (Global)",
+  enableMyWalkinBufferLabel: "Habilitar mi búfer para visitas sin cita",
+  walkinBufferMinutesLabel: "Bloquear turnos para visitas sin cita (minutos antes)",
+  blockTimeSlotTitle: "Bloquear Turno para Clientes Sin Cita",
+  blockDurationLabel: "Duración",
+  addBlockButton: "Añadir Bloqueo",
+  activeBlockedSlots: "Bloqueos de Tiempo Activos",
+  startTimeLabel: "Hora de Inicio",
+  enableCancellationFeeLabel: "Habilitar Advertencia de Tarifa de Cancelación (Global)",
+  enableCancellationFeeLabelBusiness: "Habilitar advertencia de tarifa de cancelación para este negocio",
+  cancellationFeeTitle: "Política de Cancelación",
+  cancellationFeeHoursLabel: "Ventana de Cancelación (Horas)",
+  cancellationFeeAmountLabel: "Monto de la Tarifa (€)",
   dashboardTab_schedule: "Horario y Servicios",
   dashboardTab_history: "Historial de Citas",
   dashboardTab_earnings: "Análisis de Ingresos",
+  dashboardTab_waitlist: "Lista de espera",
   welcomeBarberDashboard: "¡Bienvenido, {name}!",
   myDetailsAndScheduleTitle: "Mis Datos y Perfil",
   ariaSaveChanges: "Guardar mis datos",
@@ -1296,7 +1426,7 @@ export const spanishTranslations = {
   businessNamePlaceholder: "ej: Cortes Cool S.L.",
   ownerNameLabel: "Nombre del Propietario",
   ownerNamePlaceholder: "ej: Jane Doe",
-  ownerEmailLabel: "Email del Propietario",
+  ownerEmailLabel: "Correo Electrónico del Propietario",
   ownerEmailPlaceholder: "ej: owner@coolcuts.com",
   alertBusinessNameRequired: "El nombre del negocio es obligatorio.",
   financialOverviewTitle: "Resumen Financiero",
@@ -1343,10 +1473,19 @@ export const spanishTranslations = {
   theme_sunset: "Atardecer",
   
   // Contact Modal
-  contactModalTitle: "¡Gracias por su interés!",
-  contactModalBody: "Quiere usar este sistema para su negocio? Envíenos un correo electrónico a: {email}",
+  contactModalTitle: "Solicitar más información",
+  contactModalBody: "¿Interesado en este sistema para su negocio? Contáctenos para más información en: {email}",
   contactModalNoEmail: "El propietario del negocio aún no ha configurado una dirección de correo electrónico de contacto. Por favor, inténtelo de nuevo más tarde.",
-  contactModalSubtitle: "Sin compromiso, estaremos encantados de ayudarle."
+  contactModalSubtitle: "Estaremos encantados de ayudarle con una consulta sin compromiso.",
+  
+  // Network Error Modal
+  networkErrorModalTitle: "Error de Conexión",
+  networkErrorModalMessage: "La aplicación no pudo conectarse a la base de datos. Esto suele ser un problema de Cross-Origin Resource Sharing (CORS).",
+  networkErrorModalInstructionsTitle: "Cómo solucionarlo:",
+  networkErrorModalInstruction1: "1. Vaya al panel de su proyecto Supabase.",
+  networkErrorModalInstruction2: "2. Navegue a Project Settings > API.",
+  networkErrorModalInstruction3: "3. En 'CORS Origins', añada la URL de su aplicación: {appUrl}",
+  networkErrorModalInstruction4: "4. Haga clic en 'Guardar' y vuelva a intentarlo."
 };
 
 const arabicTranslations = {
@@ -1378,11 +1517,15 @@ const arabicTranslations = {
   backToBusinessList: "العودة إلى قائمة الأعمال",
   editBusinessName: "تعديل اسم العمل",
   saveBusinessName: "حفظ الاسم",
+  retryButton: "إعادة المحاولة",
+  loginTitle: "تسجيل الدخول",
+  errorInvalidCredentials: "البريد الإلكتروني أو كلمة المرور غير صالحة.",
   adminLoginTitle: "تسجيل دخول المسؤول",
   usernameLabel: "اسم المستخدم",
   passwordLabel: "كلمة المرور",
   usernamePlaceholder: "أدخل اسم المستخدم",
   passwordPlaceholder: "أدخل كلمة المرور",
+  emailPlaceholder: "name@example.com",
   errorInvalidAdminCredentials: "اسم المستخدم أو كلمة المرور للمسؤول غير صالحة.",
   ariaCloseLoginModal: "إغلاق نافذة تسجيل الدخول",
   barberLoginTitle: "تسجيل دخول الحلاق",
@@ -1413,6 +1556,8 @@ const arabicTranslations = {
   selectServicesTitle: "تحديد الخدمات",
   totalPrice: "السعر الإجمالي",
   totalDuration: "المدة الإجمالية",
+  waitlistCheckboxLabel: "أبلغني إذا توفرت فترة أبكر",
+  cancellationWarning: "يرجى ملاحظة: قد يتم فرض رسوم قدرها {amount}€ على الإلغاءات التي تتم في غضون {hours} ساعة من الموعد.",
   noBarbersAvailable: "لا يوجد حلاقون متاحون في الوقت الحالي.",
   availableLabel: "متاح",
   slotLabel: "فترة",
@@ -1428,9 +1573,11 @@ const arabicTranslations = {
   availableOnLocationTimeSlotsTitle: "الفترات المتاحة (في الموقع)",
   bookedStatus: "محجوز",
   pastStatus: "فات",
+  walkinOnlyStatus: "في المحل فقط",
   untilTime: "حتى {time}",
   ariaSlotBooked: "الفترة في {time} محجوزة",
   ariaSlotPast: "الفترة في {time} قد مضت وغير متاحة",
+  ariaSlotWalkinOnly: "الفترة في {time} مخصصة للعملاء بدون موعد فقط",
   ariaSelectSlot: "اختر الفترة في {time}",
   barberNotAcceptingAppointmentsTitle: "المواعيد مغلقة",
   barberNotAcceptingAppointmentsMsg: "{name} لا يقبل مواعيد جديدة حاليًا.",
@@ -1520,9 +1667,25 @@ const arabicTranslations = {
   language_ar: "العربية",
   allowedCustomerLanguagesTitle: "لغات العملاء المسموح بها",
   allowedCustomerLanguagesDescription: "اختر اللغات التي يمكن للعملاء استخدامها في صفحة الحجز الخاصة بك.",
+  enableWaitlistFeatureLabel: "تفعيل ميزة قائمة الانتظار (عام)",
+  enableMyWaitlistLabel: "تفعيل قائمة الانتظار الشخصية الخاصة بي",
+  enableWalkinBufferFeatureLabel: "تفعيل المخزن المؤقت للحضور بدون موعد (عام)",
+  enableMyWalkinBufferLabel: "تفعيل المخزن المؤقت الخاص بي للحضور بدون موعد",
+  walkinBufferMinutesLabel: "حظر الفترات للحضور بدون موعد (دقائق قبل)",
+  blockTimeSlotTitle: "حظر فترة زمنية للحضور بدون موعد",
+  blockDurationLabel: "المدة",
+  addBlockButton: "إضافة حظر",
+  activeBlockedSlots: "الفترات الزمنية المحظورة النشطة",
+  startTimeLabel: "وقت البدء",
+  enableCancellationFeeLabel: "تفعيل تحذير رسوم الإلغاء (عام)",
+  enableCancellationFeeLabelBusiness: "تفعيل تحذير رسوم الإلغاء لهذا العمل",
+  cancellationFeeTitle: "سياسة الإلغاء",
+  cancellationFeeHoursLabel: "نافذة الإلغاء (ساعات)",
+  cancellationFeeAmountLabel: "مبلغ الرسوم (€)",
   dashboardTab_schedule: "الجدول والخدمات",
   dashboardTab_history: "سجل المواعيد",
   dashboardTab_earnings: "تحليل الأرباح",
+  dashboardTab_waitlist: "قائمة الانتظار",
   welcomeBarberDashboard: "أهلاً، {name}!",
   myDetailsAndScheduleTitle: "تفاصيلي وملفي الشخصي",
   ariaSaveChanges: "حفظ تفاصيلي",
@@ -1573,17 +1736,17 @@ const arabicTranslations = {
   chartType_pie: "مخطط دائري",
   chartType_bar: "مخطط شريطي",
   noDataForChart: "لا توجد بيانات كافية لعرض المخطط.",
-  subscriptionGracePeriodTitle: "انتهى الاشتراك",
-  subscriptionGracePeriodMessage: "لقد انتهى اشتراكك. يرجى تجديد الدفع قبل {deadline} لتجنب تعليق الحساب.",
-  subscriptionOverdueModalTitle: "دفع الاشتراك مستحق",
-  subscriptionOverdueModalMessage: "اشتراكك متأخر. يرجى تسوية الدفع بحلول {deadline} للحفاظ على الوصول إلى حسابك.",
+  subscriptionGracePeriodTitle: "انتهاء صلاحية الاشتراك",
+  subscriptionGracePeriodMessage: "انتهت صلاحية اشتراكك. يرجى تجديد الدفع قبل {deadline} لتجنب تعليق الحساب.",
+  subscriptionOverdueModalTitle: "استحقاق دفع الاشتراك",
+  subscriptionOverdueModalMessage: "اشتراكك متأخر الدفع. يرجى تسوية الدفع بحلول {deadline} للحفاظ على الوصول إلى حسابك.",
   customerLookupTitle: "إدارة موعدك",
   customerLookupPrompt: "أدخل رقم هاتفك للعثور على مواعيدك:",
   findMyAppointmentsButton: "العثور على مواعيدي",
   errorNoAppointmentsFoundForPhone: "لم يتم العثور على مواعيد قادمة لهذا الرقم.",
   yourAppointmentsTitle: "مواعيدك القادمة",
-  customerAppointmentsForPhone: "المواعيد لـ: {phone}",
-  changeAppointmentNotice: "لتغيير موعد، يرجى إلغاء الموعد الحالي وحجز فترة جديدة.",
+  customerAppointmentsForPhone: "مواعيد لـ: {phone}",
+  changeAppointmentNotice: "لتغيير موعد، يرجى إلغاء موعدك الحالي وحجز فترة جديدة.",
   ariaCloseCustomerLookupModal: "إغلاق نافذة البحث عن المواعيد",
   ariaCloseCustomerAppointmentsModal: "إغلاق نافذة مواعيدك",
   unknownBarber: "حلاق غير معروف",
@@ -1591,8 +1754,8 @@ const arabicTranslations = {
   appointmentServices: "الخدمات",
   previousDayButton: "اليوم السابق",
   nextDayButton: "اليوم التالي",
-  superAdminLoginTitle: "تسجيل دخول المدير العام",
-  superAdminPanelTitle: "لوحة تحكم المدير العام",
+  superAdminLoginTitle: "تسجيل دخول المشرف المتميز",
+  superAdminPanelTitle: "لوحة تحكم المشرف المتميز",
   subscriptionManagementTitle: "إدارة الاشتراكات",
   barberNameLabel: "اسم الحلاق",
   subscriptionStatusLabel: "حالة الاشتراك",
@@ -1600,13 +1763,13 @@ const arabicTranslations = {
   status_active: "نشط",
   status_trial: "تجريبي",
   status_past_due: "متأخر الدفع",
-  exitSuperAdminMode: "الخروج من وضع المدير العام",
+  exitSuperAdminMode: "الخروج من وضع المشرف المتميز",
   dashboardTab_businesses: "الأعمال",
   dashboardTab_barbers: "الحلاقون",
   dashboardTab_subscriptions: "الاشتراكات",
   dashboardTab_financials: "المالية",
   dashboardTab_expenses: "المصروفات",
-  dashboardTab_contact: "اتصال",
+  dashboardTab_contact: "الاتصال",
   dashboardTab_settings: "الإعدادات",
   dashboardTab_branding: "العلامة التجارية",
   businessManagementTitle: "إدارة الأعمال",
@@ -1655,29 +1818,39 @@ const arabicTranslations = {
   monthlyRevenueLabel: "الإيرادات الشهرية",
   monthlyCostsLabel: "التكاليف الشهرية",
   netProfitLabel: "صافي الربح",
-  suppressWarningsLabel: "قمع تحذيرات الدفع",
+  suppressWarningsLabel: "إخفاء تحذيرات الدفع",
   contactSettingsTitle: "إعدادات معلومات الاتصال",
   contactEmailLabel: "أرسل طلبات الاتصال الخاصة بك إلى:",
   contactEmailPlaceholder: "مثال: sales@primecuts.com",
   themeSelectionTitle: "اختيار السمة",
   theme_default: "افتراضي",
   theme_oceanic: "محيطي",
-  theme_sunset: "غروب",
-  contactModalTitle: "شكرا لاهتمامك!",
-  contactModalBody: "هل تريد استخدام هذا النظام لعملك؟ أرسل لنا بريدًا إلكترونيًا على: {email}",
+  theme_sunset: "غروب الشمس",
+  contactModalTitle: "اطلب المزيد من المعلومات",
+  contactModalBody: "هل أنت مهتم بهذا النظام لعملك؟ اتصل بنا للحصول على مزيد من المعلومات على: {email}",
   contactModalNoEmail: "لم يقم صاحب العمل بعد بتكوين عنوان بريد إلكتروني للاتصال. يرجى المحاولة مرة أخرى لاحقًا.",
-  contactModalSubtitle: "هذا غير ملزم على الإطلاق."
+  contactModalSubtitle: "يسعدنا مساعدتك في استشارة غير ملزمة.",
+  networkErrorModalTitle: "خطأ في الاتصال",
+  networkErrorModalMessage: "تعذر على التطبيق الاتصال بقاعدة البيانات. غالبًا ما تكون هذه مشكلة في مشاركة الموارد عبر الأصول (CORS).",
+  networkErrorModalInstructionsTitle: "كيفية الإصلاح:",
+  networkErrorModalInstruction1: "1. انتقل إلى لوحة تحكم مشروع Supabase الخاص بك.",
+  networkErrorModalInstruction2: "2. انتقل إلى إعدادات المشروع > API.",
+  networkErrorModalInstruction3: "3. ضمن 'أصول CORS'، أضف عنوان URL لتطبيقك: {appUrl}",
+  networkErrorModalInstruction4: "4. انقر فوق 'حفظ' ثم أعد المحاولة."
 };
 
-
-export type TranslationKey = keyof typeof englishTranslations;
-export type Language = 'en' | 'nl' | 'fr' | 'es' | 'ar';
-export type LocaleTranslations = Record<TranslationKey, string | { [key: string]: string }>;
-
-export const translations: Record<Language, LocaleTranslations> = {
+export const translations = {
   en: englishTranslations,
   nl: dutchTranslations,
   fr: frenchTranslations,
   es: spanishTranslations,
   ar: arabicTranslations,
 };
+
+export type Language = keyof typeof translations;
+
+// We use 'en' as the source of truth for all keys.
+export type TranslationKey = keyof typeof englishTranslations;
+
+// This defines the shape of a single language's translations.
+export type LocaleTranslations = typeof englishTranslations;

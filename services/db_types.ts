@@ -16,6 +16,9 @@ export interface Database {
           appName: string
           contactEmail: string | null
           defaultSubscriptionPrice: number
+          enableCancellationFee: boolean
+          enableWaitlist: boolean
+          enableWalkinBuffer: boolean
           id: number
           showServicesOnSelector: boolean
         }
@@ -24,6 +27,9 @@ export interface Database {
           appName?: string
           contactEmail?: string | null
           defaultSubscriptionPrice?: number
+          enableCancellationFee?: boolean
+          enableWaitlist?: boolean
+          enableWalkinBuffer?: boolean
           id?: number
           showServicesOnSelector?: boolean
         }
@@ -32,6 +38,9 @@ export interface Database {
           appName?: string
           contactEmail?: string | null
           defaultSubscriptionPrice?: number
+          enableCancellationFee?: boolean
+          enableWaitlist?: boolean
+          enableWalkinBuffer?: boolean
           id?: number
           showServicesOnSelector?: boolean
         }
@@ -49,6 +58,7 @@ export interface Database {
           status: "booked" | "completed" | "cancelled" | "no-show"
           totalDuration: number
           totalPrice: number
+          wantsEarlierSlot: boolean | null
         }
         Insert: {
           barberId: string
@@ -59,9 +69,10 @@ export interface Database {
           id?: string
           services: Json
           slotTime: string
-          status: "booked" | "completed" | "cancelled" | "no-show"
+          status?: "booked" | "completed" | "cancelled" | "no-show"
           totalDuration: number
           totalPrice: number
+          wantsEarlierSlot?: boolean | null
         }
         Update: {
           barberId?: string
@@ -75,14 +86,19 @@ export interface Database {
           status?: "booked" | "completed" | "cancelled" | "no-show"
           totalDuration?: number
           totalPrice?: number
+          wantsEarlierSlot?: boolean | null
         }
       }
       barbers: {
         Row: {
           allowedLanguages: string[] | null
           avatarUrl: string | null
+          blockedSlots: Json
           bookableDaysInAdvance: number
           businessId: string
+          email: string
+          enableWaitlist: boolean
+          enableWalkinBuffer: boolean
           id: string
           name: string
           onLocationDays: number[]
@@ -95,19 +111,23 @@ export interface Database {
           showPricesOnBooking: boolean | null
           showServicesOnSelector: boolean | null
           timeOff: Json
-          username: string
+          walkinBufferMinutes: number
           workEndTime: string
           workStartTime: string
         }
         Insert: {
           allowedLanguages?: string[] | null
           avatarUrl?: string | null
-          bookableDaysInAdvance: number
+          blockedSlots?: Json
+          bookableDaysInAdvance?: number
           businessId: string
-          id?: string
+          email: string
+          enableWaitlist?: boolean
+          enableWalkinBuffer?: boolean
+          id: string
           name: string
-          onLocationDays: number[]
-          onLocationMode: "none" | "optional" | "exclusive"
+          onLocationDays?: number[]
+          onLocationMode?: "none" | "optional" | "exclusive"
           phoneNumber?: string | null
           preferredLanguage?: string | null
           recurringClosedDays: number[]
@@ -116,15 +136,19 @@ export interface Database {
           showPricesOnBooking?: boolean | null
           showServicesOnSelector?: boolean | null
           timeOff: Json
-          username: string
+          walkinBufferMinutes?: number
           workEndTime: string
           workStartTime: string
         }
         Update: {
           allowedLanguages?: string[] | null
           avatarUrl?: string | null
+          blockedSlots?: Json
           bookableDaysInAdvance?: number
           businessId?: string
+          email?: string
+          enableWaitlist?: boolean
+          enableWalkinBuffer?: boolean
           id?: string
           name?: string
           onLocationDays?: number[]
@@ -137,7 +161,7 @@ export interface Database {
           showPricesOnBooking?: boolean | null
           showServicesOnSelector?: boolean | null
           timeOff?: Json
-          username?: string
+          walkinBufferMinutes?: number
           workEndTime?: string
           workStartTime?: string
         }
@@ -145,7 +169,10 @@ export interface Database {
       businesses: {
         Row: {
           address: string | null
+          cancellationFeeAmount: number
+          cancellationFeeHours: number
           customSubscriptionPrice: number | null
+          enableCancellationFee: boolean
           id: string
           name: string
           ownerEmail: string | null
@@ -157,7 +184,10 @@ export interface Database {
         }
         Insert: {
           address?: string | null
+          cancellationFeeAmount?: number
+          cancellationFeeHours?: number
           customSubscriptionPrice?: number | null
+          enableCancellationFee?: boolean
           id?: string
           name: string
           ownerEmail?: string | null
@@ -169,7 +199,10 @@ export interface Database {
         }
         Update: {
           address?: string | null
+          cancellationFeeAmount?: number
+          cancellationFeeHours?: number
           customSubscriptionPrice?: number | null
+          enableCancellationFee?: boolean
           id?: string
           name?: string
           ownerEmail?: string | null
@@ -190,7 +223,7 @@ export interface Database {
         }
         Insert: {
           amount: number
-          dateAdded: string
+          dateAdded?: string
           id?: string
           name: string
           type: "monthly" | "yearly" | "one-time"
@@ -205,32 +238,16 @@ export interface Database {
       }
     }
     Views: {
-      barbers_with_passwords: {
-        Row: {
-          // This is a view, so all columns are potentially nullable
-          allowedLanguages: string[] | null
-          avatarUrl: string | null
-          bookableDaysInAdvance: number | null
-          businessId: string | null
-          id: string | null
-          name: string | null
-          onLocationDays: number[] | null
-          onLocationMode: "none" | "optional" | "exclusive" | null
-          password: string | null
-          phoneNumber: string | null
-          preferredLanguage: string | null
-          recurringClosedDays: number[] | null
-          scheduleOverrides: Json | null
-          services: Json | null
-          showPricesOnBooking: boolean | null
-          showServicesOnSelector: boolean | null
-          timeOff: Json | null
-          username: string | null
-          workEndTime: string | null
-          workStartTime: string | null
-        }
-      }
+      [_ in never]: never
     }
-    Functions: {}
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
 }

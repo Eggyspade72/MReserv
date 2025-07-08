@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { TranslationKey, Language } from '../translations';
 import { Barber, Appointment, Expense, AppConfig, Business, ThemeName } from '../types';
-import { LogoutIcon, SaveIcon, ShieldCheckIcon, PlusCircleIcon, TrashIcon, MailIcon, ArrowLeftIcon, PencilIcon, BuildingStorefrontIcon, CurrencyEuroIcon, UsersIcon, ChartPieIcon, ChartBarIcon, CogIcon } from './Icons';
+import * as api from '../services/api';
+import { LogoutIcon, SaveIcon, ShieldCheckIcon, PlusCircleIcon, TrashIcon, MailIcon, ArrowLeftIcon, PencilIcon, BuildingStorefrontIcon, CurrencyEuroIcon, UsersIcon, ChartPieIcon, ChartBarIcon, CogIcon, ExclamationTriangleIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import BarberConfigRow from './BarberConfigRow';
@@ -17,7 +18,7 @@ interface SuperAdminPanelProps {
   appConfig: AppConfig;
   onUpdateBarber: (updatedBarber: Barber) => void;
   onUpdateBusiness: (updatedBusiness: Business) => void;
-  onAddBarber: (newBarber: Omit<Barber, 'id'>) => void;
+  onAddBarber: (newBarber: api.SignUpCredentials) => void;
   onRemoveBarber: (barberId: string) => void;
   onAddBusiness: (newBusiness: Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>) => void;
   onRemoveBusiness: (businessId: string) => void;
@@ -28,7 +29,6 @@ interface SuperAdminPanelProps {
   onImpersonateBarber: (barberId: string) => void;
 }
 
-type NewBarberState = Omit<Barber, 'id' | 'services' | 'timeOff' | 'scheduleOverrides' | 'address' | 'preferredLanguage'>;
 type NewBusinessState = Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>;
 
 // Simple chart components
@@ -102,13 +102,12 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
   const [newExpenseName, setNewExpenseName] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [newExpenseType, setNewExpenseType] = useState<'monthly' | 'yearly' | 'one-time'>('monthly');
+  
   const [showAddBarberForm, setShowAddBarberForm] = useState(false);
-  const [newBarber, setNewBarber] = useState<NewBarberState>({
-    name: '', username: '', password: '', workStartTime: '09:00', workEndTime: '17:00', avatarUrl: '', phoneNumber: '', businessId: '', recurringClosedDays: [0, 6], bookableDaysInAdvance: 30, onLocationMode: 'none', onLocationDays: [], allowedLanguages: ['en', 'nl', 'fr', 'es', 'ar'], showServicesOnSelector: false,
-  });
+  const [newBarberCreds, setNewBarberCreds] = useState({email: '', password: '', name: ''});
 
   const [showAddBusinessForm, setShowAddBusinessForm] = useState(false);
-  const [newBusiness, setNewBusiness] = useState<NewBusinessState>({ name: '', ownerName: '', ownerEmail: '', address: '', theme: 'default'});
+  const [newBusiness, setNewBusiness] = useState<NewBusinessState>({ name: '', ownerName: '', ownerEmail: '', address: '', theme: 'default', customSubscriptionPrice: null, suppressGracePeriodWarning: false, enableCancellationFee: false, cancellationFeeHours: 24, cancellationFeeAmount: 15 });
 
 
   useEffect(() => { setEditableAppConfig(appConfig); }, [appConfig]);
@@ -156,28 +155,17 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
       showConfirmation({ message: t('confirmRemoveExpense', { name: expense.name }), onConfirm: () => onRemoveExpense(expense.id) })
   }
 
-  const handleNewBarberChange = (field: keyof NewBarberState, value: any) => {
-    setNewBarber(prev => ({ ...prev, [field]: value }));
-  };
-
   const handleAddNewBarber = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBarber.name.trim() || !newBarber.username.trim() || !newBarber.password?.trim() || !selectedBusiness) {
+    if (!newBarberCreds.email.trim() || !newBarberCreds.password.trim() || !newBarberCreds.name.trim()) {
         alert(t('alertNameUsernamePasswordRequired')); return;
     }
-    const barberToAdd: Omit<Barber, 'id'> = {
-        ...newBarber,
-        businessId: selectedBusiness.id,
-        bookableDaysInAdvance: Number(newBarber.bookableDaysInAdvance),
-        avatarUrl: newBarber.avatarUrl || `https://picsum.photos/seed/${new Date().getTime()}/200/200`,
-        services: [], timeOff: [], scheduleOverrides: {}, showPricesOnBooking: true, preferredLanguage: 'nl'
-    };
-    onAddBarber(barberToAdd);
-    setNewBarber({ name: '', username: '', password: '', workStartTime: '09:00', workEndTime: '17:00', avatarUrl: '', phoneNumber: '', businessId: '', recurringClosedDays: [0, 6], bookableDaysInAdvance: 30, onLocationMode: 'none', onLocationDays: [], allowedLanguages: ['en', 'nl', 'fr', 'es', 'ar'], showServicesOnSelector: false });
+    onAddBarber(newBarberCreds);
+    setNewBarberCreds({ email: '', password: '', name: '' });
     setShowAddBarberForm(false);
   };
 
-  const handleNewBusinessChange = (field: keyof NewBusinessState, value: string) => {
+  const handleNewBusinessChange = (field: keyof Omit<NewBusinessState, 'theme' | 'customSubscriptionPrice' | 'suppressGracePeriodWarning'>, value: string) => {
       setNewBusiness(prev => ({...prev, [field]: value}));
   }
 
@@ -188,7 +176,7 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
           return;
       }
       onAddBusiness(newBusiness);
-      setNewBusiness({ name: '', ownerName: '', ownerEmail: '', address: '', theme: 'default'});
+      setNewBusiness({ name: '', ownerName: '', ownerEmail: '', address: '', theme: 'default', customSubscriptionPrice: null, suppressGracePeriodWarning: false, enableCancellationFee: false, cancellationFeeHours: 24, cancellationFeeAmount: 15 });
       setShowAddBusinessForm(false);
   }
 
@@ -249,9 +237,9 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
                     <form onSubmit={handleAddNewBarber} className="bg-white dark:bg-neutral-700 p-4 rounded-md shadow-md mb-6 space-y-4">
                       <h3 className="text-xl font-medium text-primary mb-3">{t('newBarberDetailsTitle')}</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><label htmlFor="newName" className="block text-sm font-medium">{t('fullNameLabel')}</label><input type="text" id="newName" value={newBarber.name} onChange={e => handleNewBarberChange('name', e.target.value)} className="w-full p-2 rounded-md text-sm" required /></div>
-                        <div><label htmlFor="newUsername" className="block text-sm font-medium">{t('usernameLabel')}</label><input type="text" id="newUsername" value={newBarber.username} onChange={e => handleNewBarberChange('username', e.target.value)} className="w-full p-2 rounded-md text-sm" required /></div>
-                        <div><label htmlFor="newPassword" className="block text-sm font-medium">{t('passwordLabel')}</label><input type="password" id="newPassword" value={newBarber.password || ''} onChange={e => handleNewBarberChange('password', e.target.value)} className="w-full p-2 rounded-md text-sm" required /></div>
+                        <div><label htmlFor="newBarberName" className="block text-sm font-medium">{t('fullNameLabel')}</label><input type="text" id="newBarberName" value={newBarberCreds.name} onChange={e => setNewBarberCreds(p => ({...p, name: e.target.value}))} className="w-full p-2 rounded-md text-sm" required /></div>
+                        <div><label htmlFor="newBarberEmail" className="block text-sm font-medium">{t('ownerEmailLabel')}</label><input type="email" id="newBarberEmail" value={newBarberCreds.email} onChange={e => setNewBarberCreds(p => ({...p, email: e.target.value}))} className="w-full p-2 rounded-md text-sm" required /></div>
+                        <div><label htmlFor="newBarberPassword" className="block text-sm font-medium">{t('passwordLabel')}</label><input type="password" id="newBarberPassword" value={newBarberCreds.password} onChange={e => setNewBarberCreds(p => ({...p, password: e.target.value}))} className="w-full p-2 rounded-md text-sm" required /></div>
                       </div>
                       <button type="submit" className="w-full mt-2 px-4 py-2.5 bg-secondary hover:bg-emerald-600 text-white font-semibold rounded-md transition duration-150 flex items-center justify-center"><SaveIcon className="w-5 h-5 me-2"/> {t('addBarberButton')}</button>
                     </form>
@@ -271,6 +259,26 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
             )}
             {activeTab === 'subscriptions' && (
                  <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm space-y-4">
+                    <div className="p-3 bg-neutral-100 dark:bg-neutral-600 rounded-lg">
+                      <h4 className="text-base font-semibold mb-3">{t('cancellationFeeTitle')}</h4>
+                      <div className="flex items-center mb-3">
+                          <input type="checkbox" id={`enableCancellation-${editableBusiness.id}`} checked={!!editableBusiness.enableCancellationFee} onChange={e => onUpdateBusiness({ ...editableBusiness, enableCancellationFee: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                          <label htmlFor={`enableCancellation-${editableBusiness.id}`} className="ms-2 text-sm text-neutral-600 dark:text-neutral-300">{t('enableCancellationFeeLabelBusiness')}</label>
+                      </div>
+                      {editableBusiness.enableCancellationFee && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeHoursLabel')}</label>
+                                <input type="number" value={editableBusiness.cancellationFeeHours} onChange={e => onUpdateBusiness({ ...editableBusiness, cancellationFeeHours: parseInt(e.target.value) || 0 })} className="w-full p-2 rounded-md bg-white dark:bg-neutral-700 text-sm"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeAmountLabel')}</label>
+                                <input type="number" step="0.01" value={editableBusiness.cancellationFeeAmount} onChange={e => onUpdateBusiness({ ...editableBusiness, cancellationFeeAmount: parseFloat(e.target.value) || 0 })} className="w-full p-2 rounded-md bg-white dark:bg-neutral-700 text-sm"/>
+                            </div>
+                        </div>
+                      )}
+                    </div>
+
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                               <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('subscriptionStatusLabel')}</label>
@@ -497,6 +505,18 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
               <div className="flex items-center pt-2">
                   <input type="checkbox" id="allowBarberLanguageControl" checked={editableAppConfig.allowBarberLanguageControl} onChange={e => onUpdateAppConfig({ ...editableAppConfig, allowBarberLanguageControl: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
                   <label htmlFor="allowBarberLanguageControl" className="ms-2 text-sm text-neutral-800 dark:text-neutral-200">{t('allowBarberLanguageControlLabel')}</label>
+              </div>
+              <div className="flex items-center pt-2">
+                  <input type="checkbox" id="enableWaitlist" checked={editableAppConfig.enableWaitlist} onChange={e => onUpdateAppConfig({ ...editableAppConfig, enableWaitlist: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                  <label htmlFor="enableWaitlist" className="ms-2 text-sm text-neutral-800 dark:text-neutral-200">{t('enableWaitlistFeatureLabel')}</label>
+              </div>
+              <div className="flex items-center pt-2">
+                  <input type="checkbox" id="enableWalkinBuffer" checked={editableAppConfig.enableWalkinBuffer} onChange={e => onUpdateAppConfig({ ...editableAppConfig, enableWalkinBuffer: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                  <label htmlFor="enableWalkinBuffer" className="ms-2 text-sm text-neutral-800 dark:text-neutral-200">{t('enableWalkinBufferFeatureLabel')}</label>
+              </div>
+              <div className="flex items-center pt-2">
+                  <input type="checkbox" id="enableCancellationFee" checked={editableAppConfig.enableCancellationFee} onChange={e => onUpdateAppConfig({ ...editableAppConfig, enableCancellationFee: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                  <label htmlFor="enableCancellationFee" className="ms-2 text-sm text-neutral-800 dark:text-neutral-200">{t('enableCancellationFeeLabel')}</label>
               </div>
             </div>
         </div>

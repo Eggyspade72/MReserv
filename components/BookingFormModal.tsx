@@ -1,18 +1,20 @@
 
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { CalendarIcon, ClockIcon, UserCircleIcon, PhoneIcon, CheckCircleIcon, XCircleIcon, HomeIcon, MapPinIcon } from './Icons';
+import { CalendarIcon, ClockIcon, UserCircleIcon, PhoneIcon, CheckCircleIcon, XCircleIcon, HomeIcon, MapPinIcon, ExclamationTriangleIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Barber, Service } from '../types';
+import { Barber, Service, AppConfig, Business } from '../types';
 
 interface BookingFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (name: string, phone: string, services: Service[]) => void;
+  onSubmit: (name: string, phone: string, services: Service[], wantsEarlier?: boolean) => void;
   slotTime: string;
   barber: Barber;
   currentDate: Date;
   bookingType: 'in-shop' | 'on-location';
+  appConfig: AppConfig;
+  business: Business;
 }
 
 const BookingFormModal: React.FC<BookingFormModalProps> = ({
@@ -23,11 +25,14 @@ const BookingFormModal: React.FC<BookingFormModalProps> = ({
   barber,
   currentDate,
   bookingType,
+  appConfig,
+  business,
 }) => {
   const { t, language } = useLanguage();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  const [wantsEarlier, setWantsEarlier] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -36,6 +41,7 @@ const BookingFormModal: React.FC<BookingFormModalProps> = ({
       setPhone('');
       setError('');
       setSelectedServices([]);
+      setWantsEarlier(false);
     }
   }, [isOpen]);
 
@@ -77,7 +83,7 @@ const BookingFormModal: React.FC<BookingFormModalProps> = ({
     }
     
     try {
-      onSubmit(name, phone, selectedServices);
+      onSubmit(name, phone, selectedServices, wantsEarlier);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message === 'ALREADY_BOOKED_TODAY' ? t('errorAlreadyBookedToday') : err.message);
@@ -91,7 +97,8 @@ const BookingFormModal: React.FC<BookingFormModalProps> = ({
   
   const BookingTypeIcon = bookingType === 'in-shop' ? MapPinIcon : HomeIcon;
   const bookingTypeText = bookingType === 'in-shop' ? t('bookingTypeInShop') : t('bookingTypeOnLocation');
-
+  const showWaitlist = appConfig.enableWaitlist && barber.enableWaitlist;
+  const showCancellationWarning = appConfig.enableCancellationFee && business.enableCancellationFee;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity duration-300 ease-in-out opacity-100">
@@ -157,6 +164,30 @@ const BookingFormModal: React.FC<BookingFormModalProps> = ({
                 />
             </div>
           </div>
+           {showWaitlist && (
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="wantsEarlier"
+                checked={wantsEarlier}
+                onChange={(e) => setWantsEarlier(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label htmlFor="wantsEarlier" className="ms-2 block text-sm text-neutral-600 dark:text-neutral-300">
+                {t('waitlistCheckboxLabel')}
+              </label>
+            </div>
+          )}
+
+          {showCancellationWarning && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-900/40 rounded-lg flex items-start gap-3">
+                <ExclamationTriangleIcon className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5"/>
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                    {t('cancellationWarning', { hours: business.cancellationFeeHours, amount: business.cancellationFeeAmount})}
+                </p>
+            </div>
+          )}
+
           {error && <p className="text-sm text-red-500 dark:text-red-400" role="alert">{error}</p>}
           <div className="flex justify-end gap-4 pt-2">
             <button

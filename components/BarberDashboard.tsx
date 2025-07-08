@@ -1,8 +1,10 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react';
-import type { TranslationKey, Language as LanguageType } from '../translations';
-import { Barber, Appointment, Service, TimeOff, AppointmentStatus } from '../types';
-import { UserCircleIcon, ClockIcon, SaveIcon, PencilIcon, CalendarIcon, PhoneIcon, LogoutIcon, KeyIcon, TrashIcon, MapPinIcon, CalendarDaysIcon, PlusCircleIcon, ChartPieIcon, ChartBarIcon, ChevronDownIcon, ChevronUpIcon, CurrencyEuroIcon, UsersIcon, ExclamationTriangleIcon, GlobeAltIcon } from './Icons';
-import { useLanguage, Language } from '../contexts/LanguageContext';
+import type { TranslationKey, Language } from '../translations';
+import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, BlockedSlot } from '../types';
+import { UserCircleIcon, ClockIcon, SaveIcon, PencilIcon, CalendarIcon, PhoneIcon, LogoutIcon, KeyIcon, TrashIcon, MapPinIcon, CalendarDaysIcon, PlusCircleIcon, ChartPieIcon, ChartBarIcon, ChevronDownIcon, ChevronUpIcon, CurrencyEuroIcon, UsersIcon, ExclamationTriangleIcon, GlobeAltIcon, AtSymbolIcon } from './Icons';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import ScheduleCalendar from './ScheduleCalendar';
 
@@ -14,7 +16,7 @@ interface ScheduleData {
 interface BarberDashboardProps {
   barber: Barber;
   allAppointments: Appointment[]; // All appointments for this barber
-  onUpdateDetails: (updatedDetails: Partial<Barber>, newServices: Service[]) => void;
+  onUpdateDetails: (updatedDetails: Partial<Barber>, newServices: Service[], newPassword?: string) => void;
   onUpdateAppointmentStatus: (appointmentId: string, status: AppointmentStatus) => void;
   onRemoveAppointmentFromHistory: (appointmentId: string) => void;
   onLogout: () => void;
@@ -22,6 +24,7 @@ interface BarberDashboardProps {
   onResetMyAppointments: () => void;
   showGracePeriodWarning: boolean;
   allowBarberLanguageControl: boolean;
+  appConfig: AppConfig;
 }
 
 // Simple chart components
@@ -93,16 +96,21 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
     onCancelAppointment,
     onResetMyAppointments,
     allowBarberLanguageControl,
+    appConfig
 }) => {
   const { t, language } = useLanguage();
   const { showConfirmation } = useConfirmation();
-  const [activeTab, setActiveTab] = useState<'schedule' | 'history' | 'earnings'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'history' | 'earnings' | 'waitlist'>('schedule');
 
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [editableBarber, setEditableBarber] = useState(barber);
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  const [newBlockDate, setNewBlockDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newBlockTime, setNewBlockTime] = useState('12:00');
+  const [newBlockDuration, setNewBlockDuration] = useState(30);
 
   const [earningsPeriod, setEarningsPeriod] = useState<'day' | 'week' | 'month' | 'all'>('day');
   const [chartType, setChartType] = useState<'pie' | 'bar'>('pie');
@@ -125,7 +133,7 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
     handleDetailChange('onLocationDays', newDays.sort());
   };
 
-  const handleAllowedLanguageChange = (lang: LanguageType) => {
+  const handleAllowedLanguageChange = (lang: Language) => {
     const currentLangs = editableBarber.allowedLanguages || [];
     const isAllowed = currentLangs.includes(lang);
     const newLangs = isAllowed
@@ -177,6 +185,12 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
       return allAppointments
         .filter(apt => new Date(apt.date) < today)
         .sort((a, b) => new Date(`${b.date}T${b.slotTime}`).getTime() - new Date(`${a.date}T${a.slotTime}`).getTime());
+  }, [allAppointments]);
+
+  const waitlistAppointments = useMemo(() => {
+      return allAppointments
+        .filter(apt => apt.wantsEarlierSlot && apt.status === 'booked')
+        .sort((a, b) => new Date(`${a.date}T${a.slotTime}`).getTime() - new Date(`${b.date}T${b.slotTime}`).getTime());
   }, [allAppointments]);
 
   const earningsData = useMemo(() => {
@@ -232,13 +246,9 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
     if (newPassword && newPassword !== confirmNewPassword) { setPasswordError(t('errorPasswordsDoNotMatch')); return; }
     if (newPassword && newPassword.length < 6) { setPasswordError(t('errorPasswordTooShort')); return; }
     
-    const barberDetailsUpdate: Partial<Barber> = {
-        ...editableBarber,
-        ...(newPassword && { password: newPassword }),
-    };
-    const { services, ...detailsToUpdate } = barberDetailsUpdate;
+    const { services, ...detailsToUpdate } = editableBarber;
 
-    onUpdateDetails(detailsToUpdate, editableBarber.services);
+    onUpdateDetails(detailsToUpdate, editableBarber.services, newPassword || undefined);
     setIsEditingDetails(false);
     setNewPassword('');
     setConfirmNewPassword('');
@@ -259,7 +269,23 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
     });
   };
 
-  const TabButton: React.FC<{tabId: 'schedule' | 'history' | 'earnings', children: React.ReactNode}> = ({ tabId, children }) => (
+  const handleAddBlockedSlot = () => {
+    const newBlock: BlockedSlot = {
+      id: `block_${Date.now()}`,
+      date: newBlockDate,
+      startTime: newBlockTime,
+      duration: newBlockDuration,
+    };
+    const updatedBlocks = [...editableBarber.blockedSlots, newBlock];
+    handleDetailChange('blockedSlots', updatedBlocks);
+  };
+
+  const handleRemoveBlockedSlot = (id: string) => {
+    const updatedBlocks = editableBarber.blockedSlots.filter(b => b.id !== id);
+    handleDetailChange('blockedSlots', updatedBlocks);
+  }
+
+  const TabButton: React.FC<{tabId: 'schedule' | 'history' | 'earnings' | 'waitlist', children: React.ReactNode}> = ({ tabId, children }) => (
       <button onClick={() => setActiveTab(tabId)} className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === tabId ? 'border-primary text-primary' : 'border-transparent text-neutral-500 hover:text-primary'}`}>
           {children}
       </button>
@@ -275,7 +301,11 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
 
     const inputClasses = "w-full p-1.5 rounded-md text-sm bg-white dark:bg-neutral-600 text-neutral-900 dark:text-neutral-100 border border-neutral-300 dark:border-neutral-500 focus:ring-primary focus:border-primary";
     const dayOrder = ['1', '2', '3', '4', '5', '6', '0']; // Mon -> Sun
-    const allLanguages: LanguageType[] = ['en', 'nl', 'fr', 'es', 'ar'];
+    const allLanguages: Language[] = ['en', 'nl', 'fr', 'es', 'ar'];
+
+    const activeBlockedSlots = editableBarber.blockedSlots
+      .filter(b => new Date(b.date) >= new Date(new Date().toISOString().split('T')[0]))
+      .sort((a, b) => new Date(`${a.date}T${a.startTime}`).getTime() - new Date(`${b.date}T${b.startTime}`).getTime());
 
     return (
       <div>
@@ -342,6 +372,42 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
                             />
                             <span className="ms-2 text-neutral-800 dark:text-neutral-200">{t('showMyServicesOnSelectorLabel')}</span>
                         </label>
+                        {appConfig.enableWaitlist && (
+                          <label className="flex items-center text-sm cursor-pointer">
+                              <input
+                                  type="checkbox"
+                                  checked={editableBarber.enableWaitlist}
+                                  onChange={e => handleDetailChange('enableWaitlist', e.target.checked)}
+                                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              />
+                              <span className="ms-2 text-neutral-800 dark:text-neutral-200">{t('enableMyWaitlistLabel')}</span>
+                          </label>
+                        )}
+                        {appConfig.enableWalkinBuffer && (
+                          <div className="p-2 border-t border-neutral-300 dark:border-neutral-600 mt-2">
+                            <label className="flex items-center text-sm cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={editableBarber.enableWalkinBuffer}
+                                    onChange={e => handleDetailChange('enableWalkinBuffer', e.target.checked)}
+                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <span className="ms-2 text-neutral-800 dark:text-neutral-200">{t('enableMyWalkinBufferLabel')}</span>
+                            </label>
+                            {editableBarber.enableWalkinBuffer && (
+                              <div className="mt-2 ps-6">
+                                <label className="block text-xs font-medium">{t('walkinBufferMinutesLabel')}</label>
+                                <input 
+                                  type="number" 
+                                  value={editableBarber.walkinBufferMinutes} 
+                                  onChange={e => handleDetailChange('walkinBufferMinutes', parseInt(e.target.value, 10))} 
+                                  className={`${inputClasses} w-32`} 
+                                  min="0"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
                     </div>
 
                     {allowBarberLanguageControl && (
@@ -397,6 +463,29 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
                                 onScheduleChange={handleScheduleChange}
                             />
                         </div>
+                         <div className="mt-4 border-t border-neutral-300 dark:border-neutral-600 pt-3">
+                            <h4 className="font-semibold mb-2">{t('blockTimeSlotTitle')}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                                <div><label className="block text-xs font-medium">{t('dateLabel')}</label><input type="date" value={newBlockDate} onChange={e => setNewBlockDate(e.target.value)} className={inputClasses} /></div>
+                                <div><label className="block text-xs font-medium">{t('startTimeLabel')}</label><input type="time" value={newBlockTime} onChange={e => setNewBlockTime(e.target.value)} className={inputClasses} /></div>
+                                <div><label className="block text-xs font-medium">{t('blockDurationLabel')}</label><select value={newBlockDuration} onChange={e => setNewBlockDuration(parseInt(e.target.value, 10))} className={inputClasses}><option value="30">30 min</option><option value="60">1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option></select></div>
+                            </div>
+                            <button onClick={handleAddBlockedSlot} className="text-sm flex items-center text-primary hover:underline mt-2"><PlusCircleIcon className="w-4 h-4 me-1"/>{t('addBlockButton')}</button>
+                            
+                            {activeBlockedSlots.length > 0 && (
+                                <div className="mt-3">
+                                    <h5 className="text-xs font-bold uppercase text-neutral-500 dark:text-neutral-400">{t('activeBlockedSlots')}</h5>
+                                    <ul className="text-xs space-y-1 mt-1 max-h-24 overflow-y-auto">
+                                        {activeBlockedSlots.map(block => (
+                                            <li key={block.id} className="flex justify-between items-center p-1 bg-neutral-200 dark:bg-neutral-600 rounded">
+                                                <span>{new Date(block.date+'T00:00:00').toLocaleDateString(language, {weekday: 'short', month: 'short', day: 'numeric'})} @ {block.startTime} ({block.duration} min)</span>
+                                                <button onClick={() => handleRemoveBlockedSlot(block.id)} className="text-red-500 hover:text-red-400"><TrashIcon className="w-3 h-3"/></button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     
                     <div className="p-3 bg-neutral-100 dark:bg-neutral-700 rounded-md">
@@ -447,7 +536,7 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="font-semibold text-neutral-800 dark:text-neutral-100 flex items-center flex-wrap gap-x-2"><CalendarIcon className="w-4 h-4 me-2 text-primary"/> {new Date(`${apt.date}T00:00:00Z`).toLocaleDateString(language, { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })} {t('atTimeConnector')} {apt.slotTime}</p>
-                            <p className="text-sm text-neutral-700 dark:text-neutral-300 flex items-center mt-1"><UserCircleIcon className="w-4 h-4 me-2 text-primary"/> {apt.customerName} ({apt.customerPhone})</p>
+                            <p className="text-sm text-neutral-700 dark:text-neutral-300 mt-1"><UserCircleIcon className="w-4 h-4 me-2 text-primary"/> {apt.customerName} ({apt.customerPhone})</p>
                             <p className="text-sm text-neutral-700 dark:text-neutral-300 mt-1"><strong>{t('appointmentServices')}:</strong> {apt.services.map(s => s.name).join(', ')} (€{apt.totalPrice})</p>
                         </div>
                         <button onClick={() => handleCancelAppointmentClick(apt.id)} className="p-1.5 text-red-500 hover:text-red-400 transition-colors"><TrashIcon className="w-5 h-5"/></button>
@@ -493,6 +582,34 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
             <p className="text-neutral-500 dark:text-neutral-400 text-center py-4">{t('noPastAppointments')}</p>
         )}
       </section>
+  );
+
+  const renderWaitlistTab = () => (
+    <section>
+      <h3 className="text-xl font-semibold text-secondary mb-4">{t('dashboardTab_waitlist')}</h3>
+      {waitlistAppointments.length > 0 ? (
+        <div className="space-y-3 max-h-[500px] overflow-y-auto pe-2">
+          {waitlistAppointments.map(apt => (
+            <div key={apt.id} className="bg-white dark:bg-neutral-800 p-3 rounded-md shadow">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-semibold text-neutral-800 dark:text-neutral-100">{apt.customerName}</p>
+                  <p className="text-sm text-neutral-700 dark:text-neutral-300">{apt.customerPhone}</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    Original appointment: {new Date(`${apt.date}T00:00:00Z`).toLocaleDateString(language, { weekday: 'short', month: 'long', day: 'numeric', timeZone: 'UTC' })} at {apt.slotTime}
+                  </p>
+                </div>
+                <a href={`tel:${apt.customerPhone}`} className="px-3 py-1.5 bg-secondary text-white text-xs font-bold rounded-md flex items-center">
+                  <PhoneIcon className="w-4 h-4 me-1.5"/> Call
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-neutral-500 dark:text-neutral-400 text-center py-4">Your waitlist is empty.</p>
+      )}
+    </section>
   );
 
   const renderEarningsTab = () => {
@@ -562,8 +679,8 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
             {t('welcomeBarberDashboard', { name: barber.name.split(' ')[0] })}
           </h2>
           <p className="text-neutral-600 dark:text-neutral-300 text-sm flex items-center gap-2">
-            <UserCircleIcon className="w-4 h-4"/>
-            {barber.username}
+            <AtSymbolIcon className="w-4 h-4"/>
+            {barber.email}
           </p>
         </div>
         <button onClick={onLogout} className="px-4 py-2 mt-2 sm:mt-0 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg text-sm flex items-center">
@@ -576,6 +693,7 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
               <TabButton tabId="schedule">{t('dashboardTab_schedule')}</TabButton>
               <TabButton tabId="history">{t('dashboardTab_history')}</TabButton>
               <TabButton tabId="earnings">{t('dashboardTab_earnings')}</TabButton>
+              {appConfig.enableWaitlist && barber.enableWaitlist && <TabButton tabId="waitlist">{t('dashboardTab_waitlist')}</TabButton>}
           </nav>
       </div>
 
@@ -583,6 +701,7 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
         {activeTab === 'schedule' && renderScheduleTab()}
         {activeTab === 'history' && renderHistoryTab()}
         {activeTab === 'earnings' && renderEarningsTab()}
+        {activeTab === 'waitlist' && renderWaitlistTab()}
       </div>
     </div>
   );

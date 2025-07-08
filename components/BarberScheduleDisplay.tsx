@@ -1,6 +1,7 @@
 
+
 import React from 'react';
-import { Barber, Appointment, TimeSlotDisplayInfo } from '../types';
+import { Barber, Appointment, TimeSlotDisplayInfo, AppConfig } from '../types';
 import { ClockIcon, LockClosedIcon, HomeIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -10,6 +11,7 @@ interface BarberScheduleDisplayProps {
   displayDate: Date;
   onSelectSlot: (slotStartTime: string) => void;
   bookingType: 'in-shop' | 'on-location';
+  appConfig: AppConfig;
 }
 
 const timeToMinutes = (timeStr: string): number => {
@@ -29,6 +31,7 @@ const BarberScheduleDisplay: React.FC<BarberScheduleDisplayProps> = ({
   displayDate,
   onSelectSlot,
   bookingType,
+  appConfig
 }) => {
   const { t, language } = useLanguage();
 
@@ -89,12 +92,21 @@ const BarberScheduleDisplay: React.FC<BarberScheduleDisplayProps> = ({
     const slotStartTime = minutesToTime(i);
     const slotEndTime = minutesToTime(i + GRID_RESOLUTION_MINUTES);
     
-    const isBooked = appointments.some(apt => {
+    const isBookedByAppointment = appointments.some(apt => {
         const apptStartMinutes = timeToMinutes(apt.slotTime);
         const apptEndMinutes = apptStartMinutes + apt.totalDuration;
         return i >= apptStartMinutes && i < apptEndMinutes;
     });
+
+    const isBlockedManually = barber.blockedSlots.some(block => {
+        if (block.date !== displayDateString) return false;
+        const blockStartMinutes = timeToMinutes(block.startTime);
+        const blockEndMinutes = blockStartMinutes + block.duration;
+        return i >= blockStartMinutes && i < blockEndMinutes;
+    });
     
+    const isBooked = isBookedByAppointment || isBlockedManually;
+
     const [hours, minutes] = slotStartTime.split(':').map(Number);
     const slotDateTime = new Date(
       displayDate.getFullYear(),
@@ -106,11 +118,15 @@ const BarberScheduleDisplay: React.FC<BarberScheduleDisplayProps> = ({
     );
     const isPast = slotDateTime < now;
 
+    const isWalkinBufferActive = appConfig.enableWalkinBuffer && barber.enableWalkinBuffer;
+    const isWalkinOnly = isWalkinBufferActive && !isPast && (slotDateTime.getTime() - now.getTime() < barber.walkinBufferMinutes * 60 * 1000);
+
     timeSlots.push({
       startTime: slotStartTime,
       endTime: slotEndTime,
       isBooked,
       isPast,
+      isWalkinOnly,
     });
   }
 
@@ -130,39 +146,49 @@ const BarberScheduleDisplay: React.FC<BarberScheduleDisplayProps> = ({
         {title}
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-        {timeSlots.map(slot => (
-          <button
-            type="button"
-            key={slot.startTime}
-            onClick={() => !slot.isBooked && !slot.isPast && onSelectSlot(slot.startTime)}
-            disabled={slot.isBooked || slot.isPast}
-            className={`p-3 rounded-md text-sm font-medium transition-all duration-200 ease-in-out flex flex-col items-center
-              ${
-                slot.isBooked || slot.isPast
-                  ? 'bg-neutral-200 dark:bg-neutral-600 text-neutral-400 dark:text-neutral-500 cursor-not-allowed opacity-70'
-                  : 'bg-secondary hover:bg-emerald-600 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
-              } ${slot.isBooked ? 'line-through' : ''}`}
-            aria-label={
-                slot.isBooked 
-                  ? t('ariaSlotBooked', { time: slot.startTime }) 
-                  : slot.isPast 
-                  ? t('ariaSlotPast', { time: slot.startTime })
-                  : t('ariaSelectSlot', { time: slot.startTime })
+        {timeSlots.map(slot => {
+            const isDisabled = slot.isBooked || slot.isPast || slot.isWalkinOnly;
+            let statusLabel = t('availableLabel');
+            let buttonClasses = 'bg-secondary hover:bg-emerald-600 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5';
+            
+            if(slot.isBooked) {
+                statusLabel = t('bookedStatus');
+                buttonClasses = 'bg-neutral-200 dark:bg-neutral-600 text-neutral-400 dark:text-neutral-500 cursor-not-allowed opacity-70 line-through';
+            } else if (slot.isPast) {
+                statusLabel = t('pastStatus');
+                buttonClasses = 'bg-neutral-200 dark:bg-neutral-600 text-neutral-400 dark:text-neutral-500 cursor-not-allowed opacity-70';
+            } else if (slot.isWalkinOnly) {
+                statusLabel = t('walkinOnlyStatus');
+                buttonClasses = 'bg-amber-500 text-white cursor-not-allowed opacity-90';
             }
-          >
-            <div className="flex items-center justify-center mb-1">
-              {slot.isBooked ? <LockClosedIcon className="w-4 h-4 mr-1" /> : <ClockIcon className="w-4 h-4 mr-1" />}
-              <span>{slot.startTime}</span>
-            </div>
-             <span className="text-xs opacity-80 dark:text-neutral-300">
-                {slot.isBooked 
-                    ? t('bookedStatus') 
-                    : slot.isPast 
-                    ? t('pastStatus') 
-                    : t('availableLabel')}
-             </span>
-          </button>
-        ))}
+          
+            return (
+              <button
+                type="button"
+                key={slot.startTime}
+                onClick={() => !isDisabled && onSelectSlot(slot.startTime)}
+                disabled={isDisabled}
+                className={`p-3 rounded-md text-sm font-medium transition-all duration-200 ease-in-out flex flex-col items-center ${buttonClasses}`}
+                aria-label={
+                    slot.isBooked 
+                      ? t('ariaSlotBooked', { time: slot.startTime }) 
+                      : slot.isPast 
+                      ? t('ariaSlotPast', { time: slot.startTime })
+                      : slot.isWalkinOnly
+                      ? t('ariaSlotWalkinOnly', { time: slot.startTime })
+                      : t('ariaSelectSlot', { time: slot.startTime })
+                }
+              >
+                <div className="flex items-center justify-center mb-1">
+                  {slot.isBooked ? <LockClosedIcon className="w-4 h-4 mr-1" /> : <ClockIcon className="w-4 h-4 mr-1" />}
+                  <span>{slot.startTime}</span>
+                </div>
+                 <span className="text-xs opacity-80 dark:text-neutral-300">
+                    {statusLabel}
+                 </span>
+              </button>
+            )
+        })}
       </div>
     </div>
   );
