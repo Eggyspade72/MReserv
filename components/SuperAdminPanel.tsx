@@ -90,14 +90,71 @@ const SimpleBarChart: React.FC<{ data: { label: string, value: number, color: st
     );
 };
 
+const SimpleLineChart: React.FC<{ data: { label: string; value: number }[]; title: string }> = ({ data, title }) => {
+    if (!data || data.length < 2) return <div className="text-center text-neutral-500 py-10">Not enough data for chart.</div>;
+
+    const maxValue = Math.max(...data.map(d => d.value)) * 1.1 || 10; // Add 10% padding, or set a minimum to avoid division by zero
+    const minValue = 0;
+
+    const points = data.map((point, i, arr) => {
+        const x = (i / (arr.length - 1)) * 100;
+        const y = 100 - ((point.value - minValue) / (maxValue - minValue)) * 100;
+        return `${x},${y}`;
+    }).join(' ');
+
+    const yAxisLabels = 5;
+    const yLabels = Array.from({ length: yAxisLabels + 1 }, (_, i) => {
+        return Math.round(minValue + (i * (maxValue - minValue)) / yAxisLabels);
+    });
+
+    return (
+        <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow mt-6">
+            <h4 className="text-lg font-semibold mb-8 text-center">{title}</h4>
+            <div className="h-64 relative">
+                <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute top-0 left-0 overflow-visible">
+                    {yLabels.map((label, i) => (
+                        <g key={i} className="text-xs text-neutral-500 dark:text-neutral-400">
+                            <text x="-2" y={100 - (i * 100 / yAxisLabels)} dominantBaseline="middle" textAnchor="end">
+                                €{label}
+                            </text>
+                            <line
+                                x1="0" y1={100 - (i * 100 / yAxisLabels)}
+                                x2="100" y2={100 - (i * 100 / yAxisLabels)}
+                                stroke="currentColor"
+                                strokeWidth="0.2"
+                                strokeDasharray="2"
+                                className="text-neutral-200 dark:text-neutral-700"
+                            />
+                        </g>
+                    ))}
+                    {data.map((point, i, arr) => (
+                        <g key={i} className="text-xs text-neutral-500 dark:text-neutral-400">
+                            <text x={(i / (arr.length - 1)) * 100} y="108" dominantBaseline="middle" textAnchor="middle">
+                                {point.label}
+                            </text>
+                        </g>
+                    ))}
+                    <polyline fill="none" stroke="rgb(var(--color-primary))" strokeWidth="1" points={points} />
+                    {data.map((point, i, arr) => {
+                        const x = (i / (arr.length - 1)) * 100;
+                        const y = 100 - ((point.value - minValue) / (maxValue - minValue)) * 100;
+                        return <circle key={i} cx={x} cy={y} r="1.5" fill="rgb(var(--color-primary))" />;
+                    })}
+                </svg>
+            </div>
+        </div>
+    );
+};
+
 
 const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, appointments, expenses, appConfig, onUpdateBarber, onUpdateBusiness, onAddBarber, onRemoveBarber, onAddBusiness, onRemoveBusiness, onAddExpense, onRemoveExpense, onLogout, onUpdateAppConfig, onImpersonateBarber }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showConfirmation } = useConfirmation();
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [editableBusiness, setEditableBusiness] = useState<Business | null>(null);
   
-  const [activeTab, setActiveTab] = useState<'barbers' | 'subscriptions' | 'branding'>('barbers');
-  const [activeTopLevelTab, setActiveTopLevelTab] = useState<'businesses' | 'financials' | 'expenses' | 'settings' | 'contact'>('businesses');
+  const [activeTab, setActiveTab] = useState<'barbers' | 'businessSettings'>('barbers');
+  const [activeTopLevelTab, setActiveTopLevelTab] = useState<'businesses' | 'financials' | 'expenses' | 'settings'>('businesses');
   const [editableAppConfig, setEditableAppConfig] = useState<AppConfig>(appConfig);
   const [newExpenseName, setNewExpenseName] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
@@ -109,9 +166,23 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
   const [showAddBusinessForm, setShowAddBusinessForm] = useState(false);
   const [newBusiness, setNewBusiness] = useState<NewBusinessState>({ name: '', ownerName: '', ownerEmail: '', address: '', theme: 'default', customSubscriptionPrice: null, suppressGracePeriodWarning: false, enableCancellationFee: false, cancellationFeeHours: 24, cancellationFeeAmount: 15 });
 
-
   useEffect(() => { setEditableAppConfig(appConfig); }, [appConfig]);
   
+  // When the master 'businesses' prop updates, ensure our selected and editable states are synced
+  useEffect(() => {
+    if (selectedBusiness) {
+      const updatedBusiness = businesses.find(b => b.id === selectedBusiness.id);
+      if (updatedBusiness) {
+        setSelectedBusiness(updatedBusiness);
+        setEditableBusiness(updatedBusiness);
+      } else {
+        // The business was likely deleted, so go back to the list
+        setSelectedBusiness(null);
+        setEditableBusiness(null);
+      }
+    }
+  }, [businesses, selectedBusiness]);
+
   const handleConfirmPayment = (businessToUpdate: Business, months: number) => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -122,7 +193,9 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
     if (startDateForRenewal.getDate() > newValidUntilDate.getDate()) {
         newValidUntilDate.setDate(0); 
     }
-    onUpdateBusiness({ ...businessToUpdate, subscriptionStatus: 'active', subscriptionValidUntil: newValidUntilDate.toISOString().split('T')[0] });
+    const updatedBusiness = { ...businessToUpdate, subscriptionStatus: 'active', subscriptionValidUntil: newValidUntilDate.toISOString().split('T')[0] } as Business;
+    onUpdateBusiness(updatedBusiness);
+    setEditableBusiness(updatedBusiness); // also update editable state
   };
   
   const platformFinancials = useMemo(() => {
@@ -158,7 +231,7 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
   const handleAddNewBarber = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBarberCreds.email.trim() || !newBarberCreds.password.trim() || !newBarberCreds.name.trim()) {
-        alert(t('alertNameUsernamePasswordRequired')); return;
+        alert(t('alertNameEmailPasswordRequired')); return;
     }
     onAddBarber(newBarberCreds);
     setNewBarberCreds({ email: '', password: '', name: '' });
@@ -180,23 +253,82 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
       setShowAddBusinessForm(false);
   }
 
-  const TopLevelTabButton: React.FC<{tabId: 'businesses' | 'financials' | 'expenses' | 'settings' | 'contact', children: React.ReactNode}> = ({ tabId, children }) => (
+  const handleAppConfigChange = (field: keyof AppConfig, value: any) => {
+    setEditableAppConfig(prev => ({ ...prev!, [field]: value }));
+  };
+
+  const handleSaveAppConfig = () => {
+    onUpdateAppConfig(editableAppConfig);
+  };
+
+  const handleBusinessFieldChange = (field: keyof Business, value: any) => {
+    setEditableBusiness(prev => prev ? { ...prev, [field]: value } : null);
+  };
+
+  const handleSaveBusiness = () => {
+    if (editableBusiness) {
+      onUpdateBusiness(editableBusiness);
+    }
+  };
+
+    const pastEarnings = useMemo(() => {
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setUTCMonth(twelveMonthsAgo.getUTCMonth() - 11);
+        twelveMonthsAgo.setUTCDate(1);
+        twelveMonthsAgo.setUTCHours(0, 0, 0, 0);
+
+        const completedAppointments = appointments.filter(apt => {
+            const aptDate = new Date(`${apt.date}T00:00:00Z`);
+            return apt.status === 'completed' && aptDate >= twelveMonthsAgo;
+        });
+
+        const monthlyTotals = Array.from({ length: 12 }, (_, i) => {
+            const date = new Date();
+            date.setUTCMonth(date.getUTCMonth() - i);
+            return {
+                year: date.getUTCFullYear(),
+                month: date.getUTCMonth(),
+                total: 0,
+                label: date.toLocaleDateString(language, { month: 'short', year: '2-digit', timeZone: 'UTC' })
+            };
+        }).reverse();
+
+        completedAppointments.forEach(apt => {
+            const aptDate = new Date(`${apt.date}T00:00:00Z`);
+            const year = aptDate.getUTCFullYear();
+            const month = aptDate.getUTCMonth();
+
+            const monthBin = monthlyTotals.find(m => m.year === year && m.month === month);
+            if (monthBin) {
+                monthBin.total += apt.totalPrice;
+            }
+        });
+        
+        const chartColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+        
+        return monthlyTotals.map((m, index) => ({
+            label: m.label,
+            value: m.total,
+            color: chartColors[index % chartColors.length]
+        }));
+    }, [appointments, language]);
+
+
+  const TopLevelTabButton: React.FC<{tabId: 'businesses' | 'financials' | 'expenses' | 'settings', children: React.ReactNode}> = ({ tabId, children }) => (
     <button onClick={() => setActiveTopLevelTab(tabId)} className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTopLevelTab === tabId ? 'border-red-500 text-red-500' : 'border-transparent text-neutral-500 hover:text-red-500'}`}>
         {children}
     </button>
   );
 
-  const BusinessMgmtTabButton: React.FC<{tabId: 'barbers' | 'subscriptions' | 'branding', children: React.ReactNode}> = ({ tabId, children }) => (
+  const BusinessMgmtTabButton: React.FC<{tabId: 'barbers' | 'businessSettings', children: React.ReactNode}> = ({ tabId, children }) => (
     <button onClick={() => setActiveTab(tabId)} className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === tabId ? 'border-primary text-primary' : 'border-transparent text-neutral-500 hover:text-primary'}`}>
         {children}
     </button>
   );
 
   const renderBusinessManagementView = () => {
-    if (!selectedBusiness) return null;
-    const editableBusiness = businesses.find(b => b.id === selectedBusiness.id);
-    if (!editableBusiness) return null;
-
+    if (!selectedBusiness || !editableBusiness) return null;
+    
     const barbersForBusiness = barbers.filter(b => b.businessId === selectedBusiness.id);
     const appointmentsForBusiness = appointments.filter(a => a.businessId === selectedBusiness.id);
     
@@ -210,17 +342,16 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
 
     return (
         <div>
-            <button onClick={() => setSelectedBusiness(null)} className="mb-6 flex items-center text-sm text-primary hover:text-blue-500"><ArrowLeftIcon className="w-4 h-4 me-2" />{t('backToBusinessList')}</button>
-            <div className="flex items-center gap-4 mb-4">
-              <h2 className="text-2xl font-bold">{t('businessManagementFor', { name: selectedBusiness.name })}</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+              <button onClick={() => setSelectedBusiness(null)} className="flex items-center text-sm text-primary hover:text-blue-500"><ArrowLeftIcon className="w-4 h-4 me-2" />{t('backToBusinessList')}</button>
+              <h2 className="text-2xl font-bold text-end">{t('businessManagementFor', { name: selectedBusiness.name })}</h2>
             </div>
 
 
             <div className="border-b border-neutral-200 dark:border-neutral-700 mb-6">
                 <nav className="-mb-px flex gap-4" aria-label="Tabs">
                     <BusinessMgmtTabButton tabId="barbers">{t('dashboardTab_barbers')}</BusinessMgmtTabButton>
-                    <BusinessMgmtTabButton tabId="subscriptions">{t('dashboardTab_subscriptions')}</BusinessMgmtTabButton>
-                    <BusinessMgmtTabButton tabId="branding">{t('dashboardTab_branding')}</BusinessMgmtTabButton>
+                    <BusinessMgmtTabButton tabId="businessSettings">{t('dashboardTab_businessSettings')}</BusinessMgmtTabButton>
                 </nav>
             </div>
 
@@ -257,67 +388,71 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
                   {barbersForBusiness.length === 0 && !showAddBarberForm && <p className="text-neutral-500 dark:text-neutral-400 text-center py-4">{t('noBarbersConfigured')}</p>}
               </div>
             )}
-            {activeTab === 'subscriptions' && (
-                 <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm space-y-4">
-                    <div className="p-3 bg-neutral-100 dark:bg-neutral-600 rounded-lg">
-                      <h4 className="text-base font-semibold mb-3">{t('cancellationFeeTitle')}</h4>
-                      <div className="flex items-center mb-3">
-                          <input type="checkbox" id={`enableCancellation-${editableBusiness.id}`} checked={!!editableBusiness.enableCancellationFee} onChange={e => onUpdateBusiness({ ...editableBusiness, enableCancellationFee: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                          <label htmlFor={`enableCancellation-${editableBusiness.id}`} className="ms-2 text-sm text-neutral-600 dark:text-neutral-300">{t('enableCancellationFeeLabelBusiness')}</label>
+            {activeTab === 'businessSettings' && (
+              <div className="space-y-6">
+                {/* Subscription Settings */}
+                <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm space-y-4">
+                  <h3 className="text-lg font-semibold">{t('dashboardTab_subscriptions')}</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                          <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('subscriptionStatusLabel')}</label>
+                          <select value={editableBusiness.subscriptionStatus} onChange={e => handleBusinessFieldChange('subscriptionStatus', e.target.value as Business['subscriptionStatus'])} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-600 border-neutral-300 dark:border-neutral-500 text-sm">
+                              {statusOptions.map(opt => <option key={opt} value={opt}>{t(`status_${opt}` as Exclude<TranslationKey, 'days'>)}</option>)}
+                          </select>
                       </div>
-                      {editableBusiness.enableCancellationFee && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeHoursLabel')}</label>
-                                <input type="number" value={editableBusiness.cancellationFeeHours} onChange={e => onUpdateBusiness({ ...editableBusiness, cancellationFeeHours: parseInt(e.target.value) || 0 })} className="w-full p-2 rounded-md bg-white dark:bg-neutral-700 text-sm"/>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeAmountLabel')}</label>
-                                <input type="number" step="0.01" value={editableBusiness.cancellationFeeAmount} onChange={e => onUpdateBusiness({ ...editableBusiness, cancellationFeeAmount: parseFloat(e.target.value) || 0 })} className="w-full p-2 rounded-md bg-white dark:bg-neutral-700 text-sm"/>
-                            </div>
-                        </div>
-                      )}
-                    </div>
+                      <div>
+                          <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('subscriptionValidUntilLabel')}</label>
+                          <input type="date" value={editableBusiness.subscriptionValidUntil} onChange={e => handleBusinessFieldChange('subscriptionValidUntil', e.target.value)} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-600 border-neutral-300 dark:border-neutral-500 text-sm"/>
+                      </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row justify-between items-end gap-4 border-t border-neutral-200 dark:border-neutral-600 pt-4">
+                      <div>
+                          <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('customMonthlyPriceLabel')}</label>
+                          <input type="number" step="0.01" value={editableBusiness.customSubscriptionPrice ?? ''} onChange={e => handleBusinessFieldChange('customSubscriptionPrice', e.target.value ? parseFloat(e.target.value) : null)} placeholder={t('defaultPriceWithAmount', { price: appConfig.defaultSubscriptionPrice })} className="w-full max-w-[180px] p-2 rounded-md bg-neutral-100 dark:bg-neutral-600 border-neutral-300 dark:border-neutral-500 text-sm"/>
+                      </div>
+                      <div className="flex-shrink-0 flex rounded-lg shadow-md self-center sm:self-end">
+                          {[1, 6, 12].map(months => (
+                              <button key={months} onClick={() => handleConfirmPayment(editableBusiness, months)} className="px-3 py-2 bg-secondary hover:bg-emerald-600 text-white font-semibold transition duration-150 flex items-center text-xs first:rounded-s-lg last:rounded-e-lg border-e border-emerald-700 last:border-e-0">
+                                  +{months}{t(`timeAbbreviation_${months === 1 ? 'month' : 'months'}` as Exclude<TranslationKey, 'days'>)}
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+                  <div className="flex items-center">
+                      <input type="checkbox" id={`suppress-${editableBusiness.id}`} checked={!!editableBusiness.suppressGracePeriodWarning} onChange={e => handleBusinessFieldChange('suppressGracePeriodWarning', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                      <label htmlFor={`suppress-${editableBusiness.id}`} className="ms-2 text-xs text-neutral-600 dark:text-neutral-300">{t('suppressWarningsLabel')}</label>
+                  </div>
+                </div>
 
-                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                              <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('subscriptionStatusLabel')}</label>
-                              <select value={editableBusiness.subscriptionStatus} onChange={e => onUpdateBusiness({ ...editableBusiness, subscriptionStatus: e.target.value as Business['subscriptionStatus']})} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-600 border-neutral-300 dark:border-neutral-500 text-sm">
-                                  {statusOptions.map(opt => <option key={opt} value={opt}>{t(`status_${opt}` as Exclude<TranslationKey, 'days'>)}</option>)}
-                              </select>
-                          </div>
-                           <div>
-                              <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('subscriptionValidUntilLabel')}</label>
-                              <input type="date" value={editableBusiness.subscriptionValidUntil} onChange={e => onUpdateBusiness({ ...editableBusiness, subscriptionValidUntil: e.target.value })} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-600 border-neutral-300 dark:border-neutral-500 text-sm"/>
-                          </div>
-                     </div>
-                     <div className="flex flex-col sm:flex-row justify-between items-end gap-4 border-t border-neutral-200 dark:border-neutral-600 pt-4">
-                          <div>
-                             <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('customMonthlyPriceLabel')}</label>
-                              <input type="number" step="0.01" value={editableBusiness.customSubscriptionPrice || ''} onChange={e => onUpdateBusiness({ ...editableBusiness, customSubscriptionPrice: e.target.value ? parseFloat(e.target.value) : undefined })} placeholder={t('defaultPriceWithAmount', { price: appConfig.defaultSubscriptionPrice })} className="w-full max-w-[180px] p-2 rounded-md bg-neutral-100 dark:bg-neutral-600 border-neutral-300 dark:border-neutral-500 text-sm"/>
-                         </div>
-                         <div className="flex-shrink-0 flex rounded-lg shadow-md self-center sm:self-end">
-                             {[1, 6, 12].map(months => (
-                                  <button key={months} onClick={() => handleConfirmPayment(editableBusiness, months)} className="px-3 py-2 bg-secondary hover:bg-emerald-600 text-white font-semibold transition duration-150 flex items-center text-xs first:rounded-s-lg last:rounded-e-lg border-e border-emerald-700 last:border-e-0">
-                                     +{months}{t(`timeAbbreviation_${months === 1 ? 'month' : 'months'}` as Exclude<TranslationKey, 'days'>)}
-                                 </button>
-                             ))}
-                         </div>
-                     </div>
-                      <div className="flex items-center">
-                          <input type="checkbox" id={`suppress-${editableBusiness.id}`} checked={!!editableBusiness.suppressGracePeriodWarning} onChange={e => onUpdateBusiness({ ...editableBusiness, suppressGracePeriodWarning: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                          <label htmlFor={`suppress-${editableBusiness.id}`} className="ms-2 text-xs text-neutral-600 dark:text-neutral-300">{t('suppressWarningsLabel')}</label>
-                      </div>
-                 </div>
-            )}
-            {activeTab === 'branding' && (
+                {/* Cancellation Fee Settings */}
+                <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm">
+                  <h4 className="text-lg font-semibold mb-3">{t('cancellationFeeTitle')}</h4>
+                  <div className="flex items-center mb-3">
+                      <input type="checkbox" id={`enableCancellation-${editableBusiness.id}`} checked={!!editableBusiness.enableCancellationFee} onChange={e => handleBusinessFieldChange('enableCancellationFee', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                      <label htmlFor={`enableCancellation-${editableBusiness.id}`} className="ms-2 text-sm text-neutral-600 dark:text-neutral-300">{t('enableCancellationFeeLabelBusiness')}</label>
+                  </div>
+                  {editableBusiness.enableCancellationFee && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeHoursLabel')}</label>
+                            <input type="number" value={editableBusiness.cancellationFeeHours} onChange={e => handleBusinessFieldChange('cancellationFeeHours', parseInt(e.target.value) || 0 )} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-600 text-sm"/>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeAmountLabel')}</label>
+                            <input type="number" step="0.01" value={editableBusiness.cancellationFeeAmount} onChange={e => handleBusinessFieldChange('cancellationFeeAmount', parseFloat(e.target.value) || 0 )} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-600 text-sm"/>
+                        </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Branding Settings */}
                 <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm">
                     <h4 className="text-lg font-semibold mb-3">{t('themeSelectionTitle')}</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {themes.map(theme => (
                             <button
                                 key={theme.name}
-                                onClick={() => onUpdateBusiness({ ...editableBusiness, theme: theme.name })}
+                                onClick={() => handleBusinessFieldChange('theme', theme.name)}
                                 className={`p-4 rounded-lg border-2 transition-all ${editableBusiness.theme === theme.name ? 'border-primary shadow-lg scale-105' : 'border-neutral-200 dark:border-neutral-600 hover:border-primary/50'}`}
                             >
                                 <p className="font-semibold text-center mb-3 capitalize">{t(`theme_${theme.name}` as Exclude<TranslationKey, 'days'>)}</p>
@@ -330,6 +465,14 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
                         ))}
                     </div>
                 </div>
+
+                <div className="flex justify-end pt-4">
+                  <button onClick={handleSaveBusiness} className="px-6 py-2.5 bg-primary hover:bg-blue-600 text-white font-medium rounded-md transition duration-150 flex items-center text-sm">
+                    <SaveIcon className="w-5 h-5 me-2" />
+                    {t('saveChangesButton')}
+                  </button>
+                </div>
+              </div>
             )}
         </div>
     );
@@ -358,6 +501,20 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
             color: Object.values(chartColors)[index % Object.values(chartColors).length]
         })).sort((a,b) => b.value - a.value);
 
+      const monthLabels = useMemo(() => {
+        return Array.from({ length: 12 }, (_, i) => {
+            const date = new Date();
+            date.setMonth(date.getMonth() + i);
+            return date.toLocaleDateString(language, { month: 'short' });
+        });
+      }, [language]);
+
+      const projectedData = useMemo(() => Array.from({ length: 12 }, (_, i) => {
+        return {
+            label: monthLabels[i],
+            value: mrr
+        };
+      }), [monthLabels, mrr]);
 
       return (
     <>
@@ -367,7 +524,6 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
             <TopLevelTabButton tabId="financials">{t('dashboardTab_financials')}</TopLevelTabButton>
             <TopLevelTabButton tabId="expenses">{t('dashboardTab_expenses')}</TopLevelTabButton>
             <TopLevelTabButton tabId="settings">{t('dashboardTab_settings')}</TopLevelTabButton>
-            <TopLevelTabButton tabId="contact">{t('dashboardTab_contact')}</TopLevelTabButton>
         </nav>
       </div>
 
@@ -407,7 +563,10 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
                         <BusinessConfigRow 
                             key={business.id}
                             business={business}
-                            onManage={() => setSelectedBusiness(business)}
+                            onManage={() => {
+                              setSelectedBusiness(business);
+                              setEditableBusiness(JSON.parse(JSON.stringify(business))); // Deep copy to avoid mutation
+                            }}
                             onRemove={() => onRemoveBusiness(business.id)}
                             onUpdateBusiness={onUpdateBusiness}
                         />
@@ -443,30 +602,20 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow">
                     <h4 className="text-lg font-semibold mb-4">{t('subscriptionStatusChartTitle')}</h4>
-                    <SimplePieChart data={statusChartData} />
+                    {statusChartData.length > 0 ? <SimplePieChart data={statusChartData} /> : <p className="text-center py-10 text-neutral-500">{t('noDataForChart')}</p>}
                 </div>
                 <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow">
                      <h4 className="text-lg font-semibold mb-4">{t('revenueByBusinessTitle')}</h4>
-                     <SimpleBarChart data={revenueChartData} />
+                     {revenueChartData.length > 0 ? <SimpleBarChart data={revenueChartData} /> : <p className="text-center py-10 text-neutral-500">{t('noDataForChart')}</p>}
                 </div>
             </div>
 
-             <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow mt-6">
-                <h4 className="text-lg font-semibold mb-4">{t('revenueByBusinessTitle')}</h4>
-                <div className="space-y-2">
-                    {businesses.map(biz => (
-                        <div key={biz.id} className="flex justify-between items-center p-2 rounded-md hover:bg-neutral-50 dark:hover:bg-neutral-700/50">
-                            <div>
-                                <p className="font-medium text-neutral-800 dark:text-neutral-200">{biz.name}</p>
-                                <p className={`text-xs capitalize font-bold ${biz.subscriptionStatus === 'active' ? 'text-green-500' : 'text-amber-500'}`}>{t(`status_${biz.subscriptionStatus}` as Exclude<TranslationKey, 'days'>)}</p>
-                            </div>
-                            <p className="font-semibold text-neutral-800 dark:text-neutral-200">
-                                €{(biz.customSubscriptionPrice ?? appConfig.defaultSubscriptionPrice).toFixed(2)}
-                            </p>
-                        </div>
-                    ))}
-                </div>
+            <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow mt-6">
+                <h4 className="text-lg font-semibold mb-4 text-center">{t('pastMonthlyEarningsTitle')}</h4>
+                {pastEarnings.length > 0 ? <SimpleBarChart data={pastEarnings} /> : <p className="text-center py-10 text-neutral-500">{t('noDataForChart')}</p>}
             </div>
+            
+            <SimpleLineChart title={t('projectedMonthlyRevenueTitle')} data={projectedData} />
         </div>
       )}
 
@@ -496,38 +645,45 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
             <div className="bg-white dark:bg-neutral-700 p-6 rounded-lg shadow-md space-y-4">
               <div>
                   <label htmlFor="appName" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{t('appNameLabel')}</label>
-                  <input type="text" id="appName" value={editableAppConfig.appName} onChange={e => onUpdateAppConfig({ ...editableAppConfig, appName: e.target.value })} className="w-full p-2 rounded-md text-sm bg-neutral-100 dark:bg-neutral-600" />
+                  <input type="text" id="appName" value={editableAppConfig.appName} onChange={e => handleAppConfigChange('appName', e.target.value)} className="w-full p-2 rounded-md text-sm bg-neutral-100 dark:bg-neutral-600" />
               </div>
                <div className="flex items-center pt-2">
-                  <input type="checkbox" id="showServicesOnSelector" checked={editableAppConfig.showServicesOnSelector} onChange={e => onUpdateAppConfig({ ...editableAppConfig, showServicesOnSelector: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                  <input type="checkbox" id="showServicesOnSelector" checked={editableAppConfig.showServicesOnSelector} onChange={e => handleAppConfigChange('showServicesOnSelector', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
                   <label htmlFor="showServicesOnSelector" className="ms-2 text-sm text-neutral-800 dark:text-neutral-200">{t('showServicesOnSelectorLabel')}</label>
               </div>
               <div className="flex items-center pt-2">
-                  <input type="checkbox" id="allowBarberLanguageControl" checked={editableAppConfig.allowBarberLanguageControl} onChange={e => onUpdateAppConfig({ ...editableAppConfig, allowBarberLanguageControl: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                  <input type="checkbox" id="allowBarberLanguageControl" checked={editableAppConfig.allowBarberLanguageControl} onChange={e => handleAppConfigChange('allowBarberLanguageControl', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
                   <label htmlFor="allowBarberLanguageControl" className="ms-2 text-sm text-neutral-800 dark:text-neutral-200">{t('allowBarberLanguageControlLabel')}</label>
               </div>
               <div className="flex items-center pt-2">
-                  <input type="checkbox" id="enableWaitlist" checked={editableAppConfig.enableWaitlist} onChange={e => onUpdateAppConfig({ ...editableAppConfig, enableWaitlist: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                  <input type="checkbox" id="enableWaitlist" checked={editableAppConfig.enableWaitlist} onChange={e => handleAppConfigChange('enableWaitlist', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
                   <label htmlFor="enableWaitlist" className="ms-2 text-sm text-neutral-800 dark:text-neutral-200">{t('enableWaitlistFeatureLabel')}</label>
               </div>
               <div className="flex items-center pt-2">
-                  <input type="checkbox" id="enableWalkinBuffer" checked={editableAppConfig.enableWalkinBuffer} onChange={e => onUpdateAppConfig({ ...editableAppConfig, enableWalkinBuffer: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                  <input type="checkbox" id="enableWalkinBuffer" checked={editableAppConfig.enableWalkinBuffer} onChange={e => handleAppConfigChange('enableWalkinBuffer', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
                   <label htmlFor="enableWalkinBuffer" className="ms-2 text-sm text-neutral-800 dark:text-neutral-200">{t('enableWalkinBufferFeatureLabel')}</label>
               </div>
               <div className="flex items-center pt-2">
-                  <input type="checkbox" id="enableCancellationFee" checked={editableAppConfig.enableCancellationFee} onChange={e => onUpdateAppConfig({ ...editableAppConfig, enableCancellationFee: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                  <input type="checkbox" id="enableCancellationFee" checked={editableAppConfig.enableCancellationFee} onChange={e => handleAppConfigChange('enableCancellationFee', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
                   <label htmlFor="enableCancellationFee" className="ms-2 text-sm text-neutral-800 dark:text-neutral-200">{t('enableCancellationFeeLabel')}</label>
               </div>
-            </div>
-        </div>
-      )}
 
-      {activeTopLevelTab === 'contact' && (
-         <div>
-            <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100 mb-4">{t('contactSettingsTitle')}</h3>
-            <div className="bg-white dark:bg-neutral-700 p-6 rounded-lg shadow-md">
-                <label htmlFor="contactEmail" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{t('contactEmailLabel')}</label>
-                <input type="email" id="contactEmail" value={editableAppConfig.contactEmail || ''} onChange={e => onUpdateAppConfig({ ...editableAppConfig, contactEmail: e.target.value })} className="w-full p-2 rounded-md text-sm bg-neutral-100 dark:bg-neutral-600" placeholder={t('contactEmailPlaceholder')} />
+              <div className="pt-4 border-t border-neutral-200 dark:border-neutral-600">
+                  <h4 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100 mb-4">{t('contactSettingsTitle')}</h4>
+                  <label htmlFor="contactEmail" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{t('contactEmailLabel')}</label>
+                  <input type="email" id="contactEmail" value={editableAppConfig.contactEmail || ''} onChange={e => handleAppConfigChange('contactEmail', e.target.value)} className="w-full p-2 rounded-md text-sm bg-neutral-100 dark:bg-neutral-600" placeholder={t('contactEmailPlaceholder')} />
+              </div>
+              
+              <div className="pt-4 border-t border-neutral-200 dark:border-neutral-600 flex justify-end">
+                <button
+                    type="button"
+                    onClick={handleSaveAppConfig}
+                    className="px-6 py-2.5 text-sm font-medium text-white bg-primary hover:bg-blue-600 rounded-md transition flex items-center"
+                >
+                    <SaveIcon className="w-5 h-5 me-2" />
+                    {t('saveButton')}
+                </button>
+              </div>
             </div>
         </div>
       )}

@@ -1,3 +1,4 @@
+
 import { supabase } from './supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { Barber, Appointment, AppConfig, Expense, Business } from '../types';
@@ -21,11 +22,18 @@ type AppConfigUpdate = Database['public']['Tables']['app_config']['Update'];
 
 // For initial setup, we can seed the database if it's empty
 export async function seedInitialData() {
-    const { count: businessCount } = await supabase.from('businesses').select('*', { count: 'exact', head: true });
+    const { count: businessCount, error: countError } = await supabase.from('businesses').select('*', { count: 'exact', head: true });
+
+    if (countError) {
+        console.error("Error checking for businesses:", countError.message);
+        return;
+    }
+    
     if (businessCount === 0) {
-        console.log("Seeding initial businesses...");
-        const { error } = await supabase.from('businesses').insert(INITIAL_BUSINESSES as BusinessInsert[]);
-        if (error) console.error("Error seeding businesses:", error);
+        // The previous seeding logic failed due to RLS. It's insecure to seed
+        // from the client as an anonymous user. The correct pattern is for the
+        // Super Admin to create the first business after logging in.
+        console.log("No businesses found. The Super Admin should log in to create the first business.");
     }
     
     // Barber and appointment seeding is removed as it's now handled
@@ -112,12 +120,13 @@ export async function getBarbers(): Promise<Barber[]> {
 }
 
 export async function updateBarber(id: string, updates: Partial<Barber>) {
+    const { services, timeOff, blockedSlots, scheduleOverrides, ...otherUpdates } = updates;
     const updatesForDb: BarberUpdate = {
-      ...updates,
-      ...(updates.services && { services: updates.services as unknown as Json }),
-      ...(updates.timeOff && { timeOff: updates.timeOff as unknown as Json }),
-      ...(updates.blockedSlots && { blockedSlots: updates.blockedSlots as unknown as Json }),
-      ...(updates.scheduleOverrides && { scheduleOverrides: updates.scheduleOverrides as unknown as Json }),
+      ...otherUpdates,
+      ...(services !== undefined && { services: services as unknown as Json }),
+      ...(timeOff !== undefined && { timeOff: timeOff as unknown as Json }),
+      ...(blockedSlots !== undefined && { blockedSlots: blockedSlots as unknown as Json }),
+      ...(scheduleOverrides !== undefined && { scheduleOverrides: scheduleOverrides as unknown as Json }),
     };
     const { error } = await supabase.from('barbers').update(updatesForDb).eq('id', id);
     if (error) throw error;
@@ -155,9 +164,10 @@ export async function addAppointment(appointment: Omit<Appointment, 'id'>) {
 }
 
 export async function updateAppointment(id: string, updates: Partial<Appointment>) {
+    const { services, ...otherUpdates } = updates;
     const updatesForDb: AppointmentUpdate = {
-        ...updates,
-        ...(updates.services && { services: updates.services as unknown as Json }),
+        ...otherUpdates,
+        ...(services !== undefined && { services: services as unknown as Json }),
     };
     const { error } = await supabase.from('appointments').update(updatesForDb).eq('id', id);
     if (error) throw error;

@@ -361,7 +361,11 @@ const App: React.FC = () => {
     const { data: authResponse, error } = await api.signIn(email, passwordAttempt);
 
     if (error || !authResponse.session) {
-      setLoginError(t('errorInvalidCredentials'));
+      if (error && error.message.toLowerCase().includes('rate limit')) {
+        setLoginError(t('errorRateLimitExceeded'));
+      } else {
+        setLoginError(t('errorInvalidCredentials'));
+      }
       return;
     }
 

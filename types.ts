@@ -46,6 +46,7 @@ export interface Barber extends Omit<BarberRow, 'services' | 'timeOff' | 'blocke
   blockedSlots: BlockedSlot[];
   preferredLanguage: Language | null;
   allowedLanguages: Language[] | null;
+  showHelpTooltips: boolean;
 }
 
 // Use Omit to handle the Json type mismatch between db and app.
