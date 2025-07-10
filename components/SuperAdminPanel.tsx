@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import type { TranslationKey, Language } from '../translations';
 import { Barber, Appointment, Expense, AppConfig, Business, ThemeName } from '../types';
@@ -18,7 +19,7 @@ interface SuperAdminPanelProps {
   appConfig: AppConfig;
   onUpdateBarber: (updatedBarber: Barber) => void;
   onUpdateBusiness: (updatedBusiness: Business) => void;
-  onAddBarber: (newBarber: api.SignUpCredentials) => void;
+  onAddBarber: (newBarber: api.SignUpCredentials, businessId: string) => void;
   onRemoveBarber: (barberId: string) => void;
   onAddBusiness: (newBusiness: Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>) => void;
   onRemoveBusiness: (businessId: string) => void;
@@ -233,7 +234,11 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
     if (!newBarberCreds.email.trim() || !newBarberCreds.password.trim() || !newBarberCreds.name.trim()) {
         alert(t('alertNameEmailPasswordRequired')); return;
     }
-    onAddBarber(newBarberCreds);
+    if (!selectedBusiness) {
+        console.error("Cannot add barber without a selected business.");
+        return;
+    }
+    onAddBarber(newBarberCreds, selectedBusiness.id);
     setNewBarberCreds({ email: '', password: '', name: '' });
     setShowAddBarberForm(false);
   };

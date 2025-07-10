@@ -1,5 +1,9 @@
 
 
+
+
+
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
 import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business } from './types';
@@ -89,9 +93,6 @@ const App: React.FC = () => {
     if(!initialLoad) setIsLoading(true);
     setNetworkError(null);
     try {
-        if (initialLoad) {
-            await api.seedInitialData();
-        }
       const [businessesData, barbersData, appointmentsData, expensesData, configData] = await Promise.all([
         api.getBusinesses(),
         api.getBarbers(),
@@ -105,7 +106,8 @@ const App: React.FC = () => {
       setExpenses(expensesData);
       setAppConfig(configData);
     } catch (error) {
-      console.error("Failed to fetch data:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+      console.error("Failed to fetch data:", errorMessage, { originalError: error });
       if (error instanceof Error && error.message.toLowerCase().includes('failed to fetch')) {
         setNetworkError(window.location.origin);
       }
@@ -130,7 +132,7 @@ const App: React.FC = () => {
             // It's a barber, fetch their profile
             const { data, error } = await api.getBarberProfile(session.user.id);
             if (error) {
-                console.error("Error fetching barber profile:", error);
+                console.error("Error fetching barber profile:", error.message, { originalError: error });
                 // Maybe the profile isn't created yet, log them out.
                 api.signOut();
                 return;
@@ -174,7 +176,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (showCustomerAppointmentsModal && customerLookupPhoneNumber) {
         const foundAppointments = appointments.filter(
-            apt => apt.customerPhone === customerLookupPhoneNumber && apt.status === 'booked'
+            (apt) => apt.customerPhone === customerLookupPhoneNumber && apt.status === 'booked'
         ).sort((a,b) => new Date(`${a.date}T${a.slotTime}`).getTime() - new Date(`${b.date}T${b.slotTime}`).getTime());
         setCustomerAppointments(foundAppointments);
         
@@ -309,9 +311,17 @@ const App: React.FC = () => {
     setSelectedBarberId(null);
   };
 
-  const handleAddBarber = async (newBarberData: api.SignUpCredentials) => {
-    await api.signUp(newBarberData);
-    await fetchData();
+  const handleAddBarber = async (newBarberData: api.SignUpCredentials, businessId: string) => {
+    const { error } = await api.createBarber({
+        ...newBarberData,
+        businessId,
+    });
+    if (error) {
+        console.error("Failed to add barber:", { error });
+        alert(`Error creating barber: ${error.message}`);
+    } else {
+        await fetchData();
+    }
   };
 
   const handleAddBusiness = async (newBusinessData: Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>) => {
@@ -335,10 +345,15 @@ const App: React.FC = () => {
   };
 
   const handleRemoveBarber = async (barberIdToRemove: string) => {
-    await api.removeBarber(barberIdToRemove);
-    await fetchData();
-    if (selectedBarberId === barberIdToRemove) setSelectedBarberId(null);
-    if (session?.profile?.id === barberIdToRemove) setSession(null);
+    const { error } = await api.removeBarber(barberIdToRemove);
+    if (error) {
+        console.error("Failed to remove barber:", { error });
+        alert(`Error removing barber: ${error.message}`);
+    } else {
+        await fetchData();
+        if (selectedBarberId === barberIdToRemove) setSelectedBarberId(null);
+        if (session?.profile?.id === barberIdToRemove) setSession(null);
+    }
   };
 
   const handleRemoveBusiness = async (businessIdToRemove: string) => {
@@ -361,6 +376,7 @@ const App: React.FC = () => {
     const { data: authResponse, error } = await api.signIn(email, passwordAttempt);
 
     if (error || !authResponse.session) {
+      console.error("Login attempt failed:", { error });
       if (error && error.message.toLowerCase().includes('rate limit')) {
         setLoginError(t('errorRateLimitExceeded'));
       } else {
@@ -376,7 +392,7 @@ const App: React.FC = () => {
     if (!isOwner) {
       const { data: profileData, error: profileError } = await api.getBarberProfile(user.id);
       if (profileError) {
-        console.error("Login successful but failed to fetch profile:", profileError);
+        console.error("Login successful but failed to fetch profile:", profileError.message, { originalError: profileError });
         await api.signOut();
         setLoginError("Failed to load profile.");
         return;

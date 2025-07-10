@@ -1,8 +1,10 @@
 
+
+
+
 import { supabase } from './supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { Barber, Appointment, AppConfig, Expense, Business } from '../types';
-import { INITIAL_BUSINESSES } from '../constants';
 import type { Database, Json } from './db_types';
 
 export type SignUpCredentials = {
@@ -19,26 +21,6 @@ type BarberUpdate = Database['public']['Tables']['barbers']['Update'];
 type AppointmentUpdate = Database['public']['Tables']['appointments']['Update'];
 type AppConfigUpdate = Database['public']['Tables']['app_config']['Update'];
 
-
-// For initial setup, we can seed the database if it's empty
-export async function seedInitialData() {
-    const { count: businessCount, error: countError } = await supabase.from('businesses').select('*', { count: 'exact', head: true });
-
-    if (countError) {
-        console.error("Error checking for businesses:", countError.message);
-        return;
-    }
-    
-    if (businessCount === 0) {
-        // The previous seeding logic failed due to RLS. It's insecure to seed
-        // from the client as an anonymous user. The correct pattern is for the
-        // Super Admin to create the first business after logging in.
-        console.log("No businesses found. The Super Admin should log in to create the first business.");
-    }
-    
-    // Barber and appointment seeding is removed as it's now handled
-    // dynamically through the app with real user accounts.
-}
 
 // --- Auth API ---
 export async function signIn(email: string, passwordAttempt: string) {
@@ -119,6 +101,32 @@ export async function getBarbers(): Promise<Barber[]> {
     return (data || []) as Barber[];
 }
 
+export async function createBarber(barberData: {
+  email: string;
+  password: string;
+  name: string;
+  businessId: string;
+}) {
+  try {
+    // This function securely calls a Supabase Edge Function to create the barber.
+    // The Edge Function must be created in your Supabase project.
+    const { data, error } = await supabase.functions.invoke('create-barber', {
+      body: { barberData }
+    });
+    
+    if (error) {
+      console.error("Error calling create-barber Edge Function:", error.message, { originalError: error });
+      return { error, data: null };
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    const catchedError = error instanceof Error ? error : new Error('An unexpected error occurred');
+    console.error("Unexpected exception when trying to create barber:", catchedError.message, { originalError: error });
+    return { error: catchedError, data: null };
+  }
+}
+
 export async function updateBarber(id: string, updates: Partial<Barber>) {
     const { services, timeOff, blockedSlots, scheduleOverrides, ...otherUpdates } = updates;
     const updatesForDb: BarberUpdate = {
@@ -132,19 +140,25 @@ export async function updateBarber(id: string, updates: Partial<Barber>) {
     if (error) throw error;
 }
 
-export async function removeBarber(id: string) {
-    // This is a protected admin function. In a real production app, this would
-    // be implemented in a secure Supabase Edge Function and called via RPC.
-    // Exposing admin functions on the client is a security risk.
-    console.warn("Attempting to delete user from client-side. This requires a service_role key and is insecure in production.");
-    const { data, error } = await supabase.auth.admin.deleteUser(id);
-    if (error) {
-        console.error("Failed to delete auth user:", error);
-        throw error;
+export async function removeBarber(userId: string) {
+    try {
+        // This function securely calls a Supabase Edge Function to delete the user.
+        // The Edge Function must be created in your Supabase project.
+        const { data, error } = await supabase.functions.invoke('delete-barber', {
+            body: { userId }
+        });
+        
+        if (error) {
+            console.error('Error calling delete-barber Edge Function:', error.message, { originalError: error });
+            return { error, data: null };
+        }
+        
+        return { data, error: null };
+    } catch (error) {
+        const catchedError = error instanceof Error ? error : new Error('An unexpected error occurred');
+        console.error('Unexpected exception when trying to delete barber:', catchedError.message, { originalError: error });
+        return { error: catchedError, data: null };
     }
-    // The database entry in 'public.barbers' should be deleted automatically
-    // by the `ON DELETE CASCADE` constraint in the table definition.
-    return data;
 }
 
 // --- Appointments API ---
