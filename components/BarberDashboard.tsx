@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { TranslationKey, Language } from '../translations';
 import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, BlockedSlot } from '../types';
-import { UserCircleIcon, ClockIcon, SaveIcon, PencilIcon, CalendarIcon, PhoneIcon, LogoutIcon, KeyIcon, TrashIcon, MapPinIcon, CalendarDaysIcon, PlusCircleIcon, ChartPieIcon, ChartBarIcon, ChevronDownIcon, ChevronUpIcon, CurrencyEuroIcon, UsersIcon, ExclamationTriangleIcon, GlobeAltIcon, AtSymbolIcon } from './Icons';
+import { UserCircleIcon, ClockIcon, SaveIcon, PencilIcon, CalendarIcon, PhoneIcon, LogoutIcon, KeyIcon, TrashIcon, MapPinIcon, CalendarDaysIcon, PlusCircleIcon, ChartPieIcon, ChartBarIcon, ChevronDownIcon, ChevronUpIcon, CurrencyEuroIcon, UsersIcon, ExclamationTriangleIcon, GlobeAltIcon, AtSymbolIcon, XCircleIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import ScheduleCalendar from './ScheduleCalendar';
@@ -13,12 +13,63 @@ interface ScheduleData {
   scheduleOverrides: Record<string, { closed: boolean }>;
 }
 
+interface DaySettingsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (mode: 'default' | 'in-shop-exclusive' | 'on-location-exclusive') => void;
+    currentMode: 'default' | 'in-shop-exclusive' | 'on-location-exclusive';
+    date: Date;
+}
+
+const DaySettingsModal: React.FC<DaySettingsModalProps> = ({ isOpen, onClose, onSave, currentMode, date }) => {
+    const { t, language } = useLanguage();
+    const [selectedMode, setSelectedMode] = useState(currentMode);
+
+    useEffect(() => {
+        setSelectedMode(currentMode);
+    }, [currentMode, isOpen]);
+    
+    if (!isOpen) return null;
+
+    const handleSave = () => {
+        onSave(selectedMode);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-[60]">
+            <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl p-6 w-full max-w-sm">
+                <h3 className="text-lg font-semibold mb-1">{t('daySettingsTitle')}</h3>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">{date.toLocaleDateString(language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                <div className="space-y-2">
+                    <label className="flex items-center p-3 rounded-md bg-neutral-100 dark:bg-neutral-700 has-[:checked]:bg-primary/20 has-[:checked]:ring-2 has-[:checked]:ring-primary cursor-pointer">
+                        <input type="radio" name="day-mode" value="default" checked={selectedMode === 'default'} onChange={() => setSelectedMode('default')} className="w-4 h-4 text-primary focus:ring-primary"/>
+                        <span className="ms-3">{t('daySettings_default')}</span>
+                    </label>
+                     <label className="flex items-center p-3 rounded-md bg-neutral-100 dark:bg-neutral-700 has-[:checked]:bg-primary/20 has-[:checked]:ring-2 has-[:checked]:ring-primary cursor-pointer">
+                        <input type="radio" name="day-mode" value="in-shop-exclusive" checked={selectedMode === 'in-shop-exclusive'} onChange={() => setSelectedMode('in-shop-exclusive')} className="w-4 h-4 text-primary focus:ring-primary"/>
+                        <span className="ms-3">{t('daySettings_inShopOnly')}</span>
+                    </label>
+                     <label className="flex items-center p-3 rounded-md bg-neutral-100 dark:bg-neutral-700 has-[:checked]:bg-primary/20 has-[:checked]:ring-2 has-[:checked]:ring-primary cursor-pointer">
+                        <input type="radio" name="day-mode" value="on-location-exclusive" checked={selectedMode === 'on-location-exclusive'} onChange={() => setSelectedMode('on-location-exclusive')} className="w-4 h-4 text-primary focus:ring-primary"/>
+                        <span className="ms-3">{t('daySettings_onLocationOnly')}</span>
+                    </label>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                    <button onClick={onClose} className="px-4 py-2 text-sm rounded-md bg-neutral-200 dark:bg-neutral-600">{t('cancelButton')}</button>
+                    <button onClick={handleSave} className="px-4 py-2 text-sm rounded-md bg-primary text-white">{t('saveButton')}</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
 interface BarberDashboardProps {
   barber: Barber;
   allAppointments: Appointment[]; // All appointments for this barber
   onUpdateDetails: (updatedDetails: Partial<Barber>, newServices: Service[], newPassword?: string) => void;
-  onUpdateAppointmentStatus: (appointmentId: string, status: AppointmentStatus) => void;
-  onRemoveAppointmentFromHistory: (appointmentId: string) => void;
+  onMarkAsNoShow: (appointment: Appointment) => void;
   onLogout: () => void;
   onCancelAppointment: (appointmentId: string) => void;
   onResetMyAppointments: () => void;
@@ -86,12 +137,26 @@ const SimpleBarChart: React.FC<{ data: { label: string, value: number, color: st
     );
 };
 
+type DashboardTab = 'schedule' | 'history' | 'earnings' | 'waitlist';
+
+interface TabButtonProps {
+  tabId: DashboardTab;
+  activeTab: DashboardTab;
+  onClick: (tabId: DashboardTab) => void;
+  children: React.ReactNode;
+}
+
+const TabButton: React.FC<TabButtonProps> = ({ tabId, activeTab, onClick, children }) => (
+  <button onClick={() => onClick(tabId)} className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === tabId ? 'border-primary text-primary' : 'border-transparent text-neutral-500 hover:text-primary'}`}>
+      {children}
+  </button>
+);
+
 const BarberDashboard: React.FC<BarberDashboardProps> = ({
     barber,
     allAppointments,
     onUpdateDetails,
-    onUpdateAppointmentStatus,
-    onRemoveAppointmentFromHistory,
+    onMarkAsNoShow,
     onLogout,
     onCancelAppointment,
     onResetMyAppointments,
@@ -100,7 +165,7 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const { showConfirmation } = useConfirmation();
-  const [activeTab, setActiveTab] = useState<'schedule' | 'history' | 'earnings' | 'waitlist'>('schedule');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('schedule');
 
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [editableBarber, setEditableBarber] = useState(barber);
@@ -114,6 +179,9 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
 
   const [earningsPeriod, setEarningsPeriod] = useState<'day' | 'week' | 'month' | 'all'>('day');
   const [chartType, setChartType] = useState<'pie' | 'bar'>('pie');
+  
+  const [daySettingsModalOpen, setDaySettingsModalOpen] = useState(false);
+  const [selectedDateForSettings, setSelectedDateForSettings] = useState<Date | null>(null);
 
   useEffect(() => {
     setEditableBarber(barber);
@@ -169,6 +237,19 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
     }));
   };
   
+  const handleDaySettingsSave = (mode: 'default' | 'in-shop-exclusive' | 'on-location-exclusive') => {
+      if (!selectedDateForSettings) return;
+      const dateStr = selectedDateForSettings.toISOString().split('T')[0];
+      const newOverrides = { ...(editableBarber.daily_location_overrides || {}) };
+
+      if (mode === 'default') {
+          delete newOverrides[dateStr];
+      } else {
+          newOverrides[dateStr] = mode;
+      }
+      handleDetailChange('daily_location_overrides', newOverrides);
+  };
+  
   const parseDateAsUTC = (date: Date) => {
       return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   }
@@ -183,7 +264,7 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
   const pastAppointments = useMemo(() => {
       const today = parseDateAsUTC(new Date());
       return allAppointments
-        .filter(apt => new Date(apt.date) < today)
+        .filter(apt => new Date(apt.date) < today || apt.status !== 'booked')
         .sort((a, b) => new Date(`${b.date}T${b.slotTime}`).getTime() - new Date(`${a.date}T${a.slotTime}`).getTime());
   }, [allAppointments]);
 
@@ -262,10 +343,10 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
     });
   };
 
-  const handleRemoveFromHistoryClick = (appointmentId: string) => {
+  const handleMarkAsNoShowClick = (appointment: Appointment) => {
     showConfirmation({
-        message: t('confirmRemoveAppointmentFromHistory'),
-        onConfirm: () => onRemoveAppointmentFromHistory(appointmentId)
+        message: t('confirmMarkAsNoShow'),
+        onConfirm: () => onMarkAsNoShow(appointment)
     });
   };
 
@@ -285,12 +366,6 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
     handleDetailChange('blockedSlots', updatedBlocks);
   }
 
-  const TabButton: React.FC<{tabId: 'schedule' | 'history' | 'earnings' | 'waitlist', children: React.ReactNode}> = ({ tabId, children }) => (
-      <button onClick={() => setActiveTab(tabId)} className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === tabId ? 'border-primary text-primary' : 'border-transparent text-neutral-500 hover:text-primary'}`}>
-          {children}
-      </button>
-  );
-
   const renderScheduleTab = () => {
     const daysMap = t('days');
     const allDays = [1, 2, 3, 4, 5, 6, 0];
@@ -309,6 +384,13 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
 
     return (
       <div>
+        <DaySettingsModal 
+            isOpen={daySettingsModalOpen}
+            onClose={() => setDaySettingsModalOpen(false)}
+            onSave={handleDaySettingsSave}
+            currentMode={editableBarber.daily_location_overrides?.[selectedDateForSettings?.toISOString().split('T')[0] || ''] || 'default'}
+            date={selectedDateForSettings || new Date()}
+        />
         <section className="mb-8 p-4 bg-white dark:bg-neutral-800 rounded-lg shadow">
            <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
               <h3 className="text-xl font-semibold text-secondary">{t('myDetailsAndScheduleTitle')}</h3>
@@ -461,6 +543,10 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
                                     scheduleOverrides: editableBarber.scheduleOverrides,
                                 }}
                                 onScheduleChange={handleScheduleChange}
+                                onDayClick={(date) => {
+                                    setSelectedDateForSettings(date);
+                                    setDaySettingsModalOpen(true);
+                                }}
                             />
                         </div>
                          <div className="mt-4 border-t border-neutral-300 dark:border-neutral-600 pt-3">
@@ -567,12 +653,11 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
                             </div>
                             <div className="flex flex-col items-end gap-2">
                                 {apt.status === 'completed' && (
-                                    <button onClick={() => onUpdateAppointmentStatus(apt.id, 'no-show')} className="text-xs px-2 py-1 bg-amber-500 text-white rounded">{t('markAsNoShowButton')}</button>
+                                    <button onClick={() => handleMarkAsNoShowClick(apt)} className="text-xs px-2 py-1 bg-amber-500 text-white rounded">{t('markAsNoShowButton')}</button>
                                 )}
                                 {apt.status === 'no-show' && (
-                                    <button onClick={() => onUpdateAppointmentStatus(apt.id, 'completed')} className="text-xs px-2 py-1 bg-green-500 text-white rounded">{t('unmarkAsNoShowButton')}</button>
+                                    <p className="text-xs px-2 py-1 bg-red-500 text-white rounded">{t('status_no_show')}</p>
                                 )}
-                                <button onClick={() => handleRemoveFromHistoryClick(apt.id)} className="p-1.5 text-red-500 hover:text-red-400 transition-colors"><TrashIcon className="w-5 h-5"/></button>
                             </div>
                         </div>
                     </div>
@@ -690,10 +775,10 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
       
       <div className="border-b border-neutral-200 dark:border-neutral-600 mb-6">
           <nav className="-mb-px flex gap-6" aria-label="Tabs">
-              <TabButton tabId="schedule">{t('dashboardTab_schedule')}</TabButton>
-              <TabButton tabId="history">{t('dashboardTab_history')}</TabButton>
-              <TabButton tabId="earnings">{t('dashboardTab_earnings')}</TabButton>
-              {appConfig.enableWaitlist && barber.enableWaitlist && <TabButton tabId="waitlist">{t('dashboardTab_waitlist')}</TabButton>}
+              <TabButton tabId="schedule" activeTab={activeTab} onClick={setActiveTab}>{t('dashboardTab_schedule')}</TabButton>
+              <TabButton tabId="history" activeTab={activeTab} onClick={setActiveTab}>{t('dashboardTab_history')}</TabButton>
+              <TabButton tabId="earnings" activeTab={activeTab} onClick={setActiveTab}>{t('dashboardTab_earnings')}</TabButton>
+              {appConfig.enableWaitlist && barber.enableWaitlist && <TabButton tabId="waitlist" activeTab={activeTab} onClick={setActiveTab}>{t('dashboardTab_waitlist')}</TabButton>}
           </nav>
       </div>
 

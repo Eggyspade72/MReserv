@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -11,9 +12,10 @@ interface ScheduleData {
 interface ScheduleCalendarProps {
   scheduleData: ScheduleData;
   onScheduleChange: (newSchedule: ScheduleData) => void;
+  onDayClick?: (date: Date) => void;
 }
 
-const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ scheduleData, onScheduleChange }) => {
+const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ scheduleData, onScheduleChange, onDayClick }) => {
   const { language, t } = useLanguage();
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
@@ -60,6 +62,14 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ scheduleData, onSch
       recurringClosedDays: newRecurringClosedDays,
       scheduleOverrides: cleanedOverrides,
     });
+  };
+
+  const handleDayInteraction = (date: Date) => {
+    if (onDayClick) {
+        onDayClick(date);
+    } else {
+        toggleDateOverride(date);
+    }
   };
 
   const toggleDateOverride = (date: Date) => {
@@ -138,7 +148,7 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ scheduleData, onSch
         <div key={day} className="flex justify-center items-center">
           <button
             type="button"
-            onClick={() => !isPast && toggleDateOverride(date)}
+            onClick={() => !isPast && handleDayInteraction(date)}
             disabled={isPast}
             className={`${baseClasses} ${stateClasses} ${todayClasses} ${interactionClasses}`}
           >

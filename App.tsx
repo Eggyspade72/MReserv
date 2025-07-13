@@ -1,12 +1,8 @@
 
 
-
-
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
-import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business } from './types';
+import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business, TopLevelTab, CustomerReport, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate } from './types';
 import * as api from './services/api';
 import BarberSelector from './components/BarberSelector';
 import BarberScheduleDisplay from './components/BarberScheduleDisplay';
@@ -19,7 +15,8 @@ import SuperAdminPanel from './components/SuperAdminPanel';
 import SubscriptionOverdueModal from './components/SubscriptionOverdueModal';
 import ContactModal from './components/ContactModal';
 import NetworkErrorModal from './components/NetworkErrorModal';
-import { UserIcon, CalendarIcon, CogIcon, ArrowLeftIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PhoneIcon, MapPinIcon, LogoutIcon, HomeIcon, SpinnerIcon } from './components/Icons';
+import ReportProblemModal from './components/ReportProblemModal';
+import { UserIcon, CalendarIcon, CogIcon, ArrowLeftIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PhoneIcon, MapPinIcon, LogoutIcon, HomeIcon, SpinnerIcon, ExclamationTriangleIcon } from './components/Icons';
 import { useLanguage, Language } from './contexts/LanguageContext';
 import { useConfirmation } from './contexts/ConfirmationContext';
 import ThemeToggle from './components/ThemeToggle';
@@ -33,7 +30,6 @@ type AppSession = {
     profile: Barber | null; // For barbers
     isOwner: boolean;
 } | null;
-
 
 // Helper to check if a barber is effectively closed
 const isBarberEffectivelyClosed = (barber: Barber, business: Business | undefined) => {
@@ -49,6 +45,22 @@ const isBarberEffectivelyClosed = (barber: Barber, business: Business | undefine
 
     return isClosedBySchedule || isClosedBySubscription;
 };
+
+interface BookingTypeTabProps {
+  type: 'in-shop' | 'on-location';
+  children: React.ReactNode;
+  bookingType: 'in-shop' | 'on-location';
+  onClick: (type: 'in-shop' | 'on-location') => void;
+}
+
+const BookingTypeTab: React.FC<BookingTypeTabProps> = ({ type, children, bookingType, onClick }) => (
+  <button
+    onClick={() => onClick(type)}
+    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${bookingType === type ? 'border-primary text-primary' : 'border-transparent text-neutral-500 hover:text-primary'}`}
+  >
+    {children}
+  </button>
+);
 
 const App: React.FC = () => {
   const { t, language, setLanguage } = useLanguage();
@@ -83,68 +95,84 @@ const App: React.FC = () => {
   const [customerManagementError, setCustomerManagementError] = useState<string>('');
   
   const [showContactModal, setShowContactModal] = useState<boolean>(false);
+  const [showReportProblemModal, setShowReportProblemModal] = useState<boolean>(false);
 
   const [footerClickCount, setFooterClickCount] = useState(0);
 
   const [bookingType, setBookingType] = useState<'in-shop' | 'on-location'>('in-shop');
   const [networkError, setNetworkError] = useState<string | null>(null);
   
-  const fetchData = useCallback(async (initialLoad = false) => {
-    if(!initialLoad) setIsLoading(true);
-    setNetworkError(null);
+  // Super Admin state lifted up to App to prevent reset on re-render
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+  const [activeTopLevelTab, setActiveTopLevelTab] = useState<TopLevelTab>('businesses');
+
+  const fetchData = useCallback(async () => {
     try {
-      const [businessesData, barbersData, appointmentsData, expensesData, configData] = await Promise.all([
+      const [businessesData, barbersData, appointmentsData, expensesData] = await Promise.all([
         api.getBusinesses(),
         api.getBarbers(),
         api.getAppointments(),
         api.getExpenses(),
-        api.getAppConfig(),
       ]);
       setBusinesses(businessesData);
       setBarbers(barbersData);
       setAppointments(appointmentsData);
       setExpenses(expensesData);
-      setAppConfig(configData);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-      console.error("Failed to fetch data:", errorMessage, { originalError: error });
-      if (error instanceof Error && error.message.toLowerCase().includes('failed to fetch')) {
-        setNetworkError(window.location.origin);
-      }
-    } finally {
-      setIsLoading(false);
+       // Re-throw the error to be caught by the calling function's catch block
+       throw error;
     }
   }, []);
 
   useEffect(() => {
-    fetchData(true);
-    
     const { data: authListener } = api.onAuthStateChange(async (_event, session) => {
-        if (!session) {
-            setSession(null);
-            return;
-        }
+        setIsLoading(true);
+        setNetworkError(null);
 
-        const isOwner = session.user.app_metadata?.role === 'owner';
-        let profile: Barber | null = null;
-        
-        if (!isOwner) {
-            // It's a barber, fetch their profile
-            const { data, error } = await api.getBarberProfile(session.user.id);
-            if (error) {
-                console.error("Error fetching barber profile:", error.message, { originalError: error });
-                // Maybe the profile isn't created yet, log them out.
-                api.signOut();
-                return;
+        try {
+            // Step 1: Critical config fetch. Without it, nothing works.
+            const configData = await api.getAppConfig();
+            setAppConfig(configData);
+
+            // Step 2: Session and profile logic.
+            if (session) {
+                const isOwner = session.user.app_metadata?.role === 'owner';
+                let profile: Barber | null = null;
+
+                if (!isOwner) {
+                    // For non-owners (barbers), the profile is essential.
+                    const { data, error } = await api.getBarberProfile(session.user.id);
+                    if (error) {
+                        // If profile fails, treat as a critical error. Log out and stop.
+                        console.error("Critical: Logged in user has no profile. Logging out.", { userId: session.user.id, error });
+                        await api.signOut();
+                        setSession(null);
+                        // The auth listener will fire again with a null session. Stop here for this run.
+                        setIsLoading(false);
+                        return;
+                    }
+                    profile = data;
+                }
+                setSession({ auth: session, profile, isOwner });
+            } else {
+                setSession(null);
             }
-            profile = data;
-        }
 
-        setSession({ auth: session, profile, isOwner });
+            // Step 3: Fetch all other application data.
+            await fetchData();
+
+        } catch (error) {
+            // This will catch errors from getAppConfig or fetchData
+            const errorMessage = error instanceof Error ? error.message : "An unknown network error occurred";
+            console.error("Failed during initial data fetch:", errorMessage, { originalError: error });
+            setNetworkError(window.location.origin);
+        } finally {
+            setIsLoading(false);
+        }
     });
 
     return () => {
-        authListener?.subscription.unsubscribe();
+      authListener?.subscription.unsubscribe();
     };
   }, [fetchData]);
 
@@ -258,8 +286,13 @@ const App: React.FC = () => {
       const dateString = currentCustomerViewDate.toISOString().split('T')[0];
       const selectedBarber = barbers.find(b => b.id === selectedBarberId);
 
-      if (!selectedBarber) return;
+      if (!selectedBarber || !appConfig) return;
       
+      const isBlocked = await api.isCustomerBlocked(customerPhone);
+      if (isBlocked) {
+        throw new Error('CUSTOMER_BLOCKED');
+      }
+
       if (appointments.some(apt => apt.customerPhone === customerPhone && apt.date === dateString)) {
         throw new Error('ALREADY_BOOKED_TODAY');
       }
@@ -269,7 +302,7 @@ const App: React.FC = () => {
           totalDuration: acc.totalDuration + s.duration
       }), { totalPrice: 0, totalDuration: 0 });
 
-      const newAppointment: Omit<Appointment, 'id'> = {
+      const newAppointment: AppointmentInsert = {
         barberId: selectedBarberId,
         businessId: selectedBarber.businessId,
         date: dateString,
@@ -298,9 +331,11 @@ const App: React.FC = () => {
     await fetchData();
   };
   
-  const handleUpdateAppointmentStatus = async (appointmentId: string, status: AppointmentStatus) => {
-      await api.updateAppointment(appointmentId, { status });
-      await fetchData();
+  const handleMarkAsNoShow = async (appointment: Appointment) => {
+    if (!appConfig) return;
+    await api.updateAppointment(appointment.id, { status: 'no-show' });
+    await api.handleNoShowCheck(appointment.customerPhone, appConfig.no_show_block_limit);
+    await fetchData();
   };
   
   const handleLogout = async () => {
@@ -309,17 +344,30 @@ const App: React.FC = () => {
     setShowGracePeriodWarning(false);
     setImpersonatedBarber(null);
     setSelectedBarberId(null);
+    setSelectedBusinessId(null);
   };
 
   const handleAddBarber = async (newBarberData: api.SignUpCredentials, businessId: string) => {
-    const { error } = await api.createBarber({
-        ...newBarberData,
-        businessId,
-    });
-    if (error) {
-        console.error("Failed to add barber:", { error });
-        alert(`Error creating barber: ${error.message}`);
+    // Step 1: Create the auth user.
+    const { data: authData, error: authError } = await api.createBarberAuthUser(newBarberData);
+
+    if (authError || !authData.user) {
+        console.error("Failed to create barber auth user:", authError);
+        alert(`Error creating barber auth user: ${authError?.message || 'An unknown authentication error occurred.'}`);
+        return;
+    }
+
+    // Step 2: Create the public profile with defaults.
+    const { user } = authData;
+    const { error: profileError } = await api.addBarberProfile(user.id, user.email!, newBarberData.name, businessId);
+
+    if (profileError) {
+        // This is a critical failure. The auth user exists but the profile doesn't. Attempt to clean up.
+        console.error("CRITICAL: Auth user created but profile insertion failed.", profileError);
+        alert(`CRITICAL ERROR: Failed to create barber profile: ${profileError.message}. Attempting to delete the orphaned user. Please verify.`);
+        await api.removeBarber(user.id); // Attempt to remove the orphaned auth user.
     } else {
+        // Success!
         await fetchData();
     }
   };
@@ -366,9 +414,11 @@ const App: React.FC = () => {
       });
   };
   
-  const handleUpdateAppConfig = async (newConfig: AppConfig) => {
+  const handleUpdateAppConfig = async (newConfig: AppConfigUpdate) => {
     await api.updateAppConfig(newConfig);
-    await fetchData();
+    // After updating, we need the full new config object, so we must fetch it again.
+    const updatedConfig = await api.getAppConfig();
+    setAppConfig(updatedConfig);
   };
 
   const handleLoginAttempt = async (email: string, passwordAttempt: string) => {
@@ -490,7 +540,7 @@ const App: React.FC = () => {
     }
   };
   
-  const handleAddExpense = async (newExpense: Omit<Expense, 'id' | 'dateAdded'>) => {
+  const handleAddExpense = async (newExpense: ExpenseInsert) => {
     await api.addExpense(newExpense);
     await fetchData();
   };
@@ -498,6 +548,12 @@ const App: React.FC = () => {
   const handleRemoveExpense = async (expenseId: string) => {
     await api.removeExpense(expenseId);
     await fetchData();
+  };
+
+  const handleAddReport = async (report: CustomerReportInsert) => {
+    await api.addCustomerReport(report);
+    setShowReportProblemModal(false);
+    // Maybe show a success message
   };
 
   if (isLoading) {
@@ -515,14 +571,21 @@ const App: React.FC = () => {
             isOpen={!!networkError}
             appUrl={networkError}
             onClose={() => setNetworkError(null)}
-            onRetry={() => fetchData(true)}
+            onRetry={() => window.location.reload()} // A full reload is better for critical errors
         />
     )
   }
   
+  // With robust error handling, this check is less likely to be hit,
+  // but it's a good safeguard.
   if (!appConfig) {
-      // This state can be reached if fetchData completes without data and without a network error
-      return <div>Error: App configuration could not be loaded.</div>;
+    // This case should now be covered by the NetworkErrorModal,
+    // but we keep it as a fallback.
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            <p>Could not load application configuration.</p>
+        </div>
+    );
   }
 
   const selectedBarber = barbers.find(b => b.id === selectedBarberId);
@@ -537,8 +600,7 @@ const App: React.FC = () => {
                 onUpdateDetails={handleUpdateBarberDetailsByBarber}
                 onLogout={handleLogout} onCancelAppointment={handleCancelAppointment}
                 onResetMyAppointments={handleResetMyAppointmentsBarber}
-                onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
-                onRemoveAppointmentFromHistory={handleRemoveAppointmentFromHistory}
+                onMarkAsNoShow={handleMarkAsNoShow}
                 showGracePeriodWarning={false}
                 allowBarberLanguageControl={appConfig.allowBarberLanguageControl}
                 appConfig={appConfig}
@@ -561,6 +623,11 @@ const App: React.FC = () => {
                     onLogout={handleLogout}
                     onUpdateAppConfig={handleUpdateAppConfig}
                     onImpersonateBarber={handleImpersonateBarber}
+                    onDataRefresh={fetchData}
+                    selectedBusinessId={selectedBusinessId}
+                    onSelectBusinessId={setSelectedBusinessId}
+                    activeTopLevelTab={activeTopLevelTab}
+                    onSetTopLevelTab={setActiveTopLevelTab}
                 />
     }
     if (session?.profile) {
@@ -569,8 +636,7 @@ const App: React.FC = () => {
                 onUpdateDetails={handleUpdateBarberDetailsByBarber}
                 onLogout={handleLogout} onCancelAppointment={handleCancelAppointment}
                 onResetMyAppointments={handleResetMyAppointmentsBarber}
-                onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
-                onRemoveAppointmentFromHistory={handleRemoveAppointmentFromHistory}
+                onMarkAsNoShow={handleMarkAsNoShow}
                 showGracePeriodWarning={showGracePeriodWarning}
                 allowBarberLanguageControl={appConfig.allowBarberLanguageControl}
                 appConfig={appConfig}
@@ -578,15 +644,6 @@ const App: React.FC = () => {
     }
     if (selectedBarber) {
       const business = businesses.find(b => b.id === selectedBarber.businessId);
-
-      const BookingTypeTab: React.FC<{ type: 'in-shop' | 'on-location'; children: React.ReactNode }> = ({ type, children }) => (
-        <button
-          onClick={() => setBookingType(type)}
-          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${bookingType === type ? 'border-primary text-primary' : 'border-transparent text-neutral-500 hover:text-primary'}`}
-        >
-          {children}
-        </button>
-      );
 
       return (
         <>
@@ -607,21 +664,13 @@ const App: React.FC = () => {
               <button onClick={() => handleChangeCustomerViewDate('next')} disabled={isMaxDate(currentCustomerViewDate, selectedBarber)} className="px-3 py-2 bg-neutral-200 dark:bg-neutral-700 rounded-md disabled:opacity-50 flex items-center text-sm">{t('nextDayButton')} <ChevronRightIcon className="w-5 h-5 ms-1" /></button>
           </div>
 
-          {selectedBarber.onLocationMode === 'optional' && (
-            <div className="border-b border-neutral-200 dark:border-neutral-700 mb-6 flex justify-center">
-              <nav className="-mb-px flex gap-4" aria-label="Tabs">
-                <BookingTypeTab type="in-shop"><MapPinIcon className="w-5 h-5" />{t('bookingTypeTabInShop')}</BookingTypeTab>
-                <BookingTypeTab type="on-location"><HomeIcon className="w-5 h-5" />{t('bookingTypeTabOnLocation')}</BookingTypeTab>
-              </nav>
-            </div>
-          )}
-
           <BarberScheduleDisplay
             barber={selectedBarber}
             appointments={appointments.filter(apt => apt.barberId === selectedBarberId && apt.date === currentCustomerViewDate.toISOString().split('T')[0] && apt.status === 'booked')}
             displayDate={currentCustomerViewDate}
             onSelectSlot={handleOpenBookingModal}
             bookingType={bookingType}
+            onBookingTypeChange={setBookingType}
             appConfig={appConfig}
           />
         </>
@@ -640,12 +689,14 @@ const App: React.FC = () => {
     );
   };
 
+  const hasCustomLogo = !!selectedBusiness?.logo_url;
+
   return (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-8">
        <header className="w-full max-w-6xl mb-4 z-20">
             <div className="relative flex justify-center items-center text-center py-4">
                 <div className="absolute top-1/2 start-0 -translate-y-1/2">
-                    <Logo />
+                    <Logo logoUrl={selectedBusiness?.logo_url} />
                 </div>
                 <div className="flex-1">
                     <p className="text-neutral-600 dark:text-neutral-300 text-lg hidden md:block">{t('appTagline')}</p>
@@ -696,6 +747,7 @@ const App: React.FC = () => {
       <CustomerAppointmentsModal isOpen={showCustomerAppointmentsModal} onClose={() => setShowCustomerAppointmentsModal(false)} appointments={customerAppointments} barbers={barbers} onCancelAppointment={handleCancelAppointment} customerPhoneNumber={customerLookupPhoneNumber} />
       <SubscriptionOverdueModal isOpen={showOverdueModal} onClose={() => setShowOverdueModal(false)} subscriptionValidUntil={session?.profile ? (businesses.find(b => b.id === session.profile?.businessId)?.subscriptionValidUntil || '') : ''} />
       <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} contactEmail={appConfig?.contactEmail || undefined} />
+      <ReportProblemModal isOpen={showReportProblemModal} onClose={() => setShowReportProblemModal(false)} onSubmit={handleAddReport} businesses={businesses} barbers={barbers} />
       
 
       <footer className="mt-12 text-center text-neutral-600 dark:text-neutral-400 text-sm w-full max-w-6xl">
@@ -703,7 +755,7 @@ const App: React.FC = () => {
             <span onClick={handleCopyrightClick} className="cursor-pointer" title="Super Admin Access Trigger">&copy;</span>
             {' '}{new Date().getFullYear()} {appConfig?.appName || 'MReserv'}. {t('footerRights')}
         </p>
-        <p className="mb-4">{t('footerTagline')}</p>
+        {!hasCustomLogo && <p className="mb-4">{t('footerTagline')}</p>}
         {!session && (
             <div className="flex justify-center items-center my-4">
                 <button onClick={() => setShowContactModal(true)} className="px-6 py-3 bg-secondary hover:bg-emerald-600 text-white font-semibold rounded-lg shadow-md transition duration-150 flex items-center text-base">
@@ -711,7 +763,22 @@ const App: React.FC = () => {
                 </button>
             </div>
         )}
-        <p className="text-xs mt-2">{t('poweredBy', { name: appConfig?.appName || 'MReserv' })}</p>
+        <div className="flex justify-center items-center gap-2 mt-4">
+           {hasCustomLogo ? (
+                <>
+                 <p className="text-xs">{t('poweredBy', { name: '' })}</p>
+                 <Logo useTextLogo={true} />
+                </>
+            ) : (
+                 <p className="text-xs">{t('poweredBy', { name: appConfig?.appName || 'MReserv' })}</p>
+            )}
+        </div>
+        {!session && (
+          <button onClick={() => setShowReportProblemModal(true)} className="text-xs text-neutral-500 hover:text-primary mt-4 flex items-center justify-center mx-auto">
+            <ExclamationTriangleIcon className="w-3 h-3 me-1" />
+            {t('reportProblemButton')}
+          </button>
+        )}
       </footer>
     </div>
   );

@@ -1,66 +1,89 @@
-import type { Language } from './translations';
-import type { Database } from './services/db_types';
 
-// Get Row types from generated db types
-type BusinessRow = Database['public']['Tables']['businesses']['Row'];
-type BarberRow = Database['public']['Tables']['barbers']['Row'];
-type AppointmentRow = Database['public']['Tables']['appointments']['Row'];
-type ExpenseRow = Database['public']['Tables']['expenses']['Row'];
-type AppConfigRow = Database['public']['Tables']['app_config']['Row'];
+import type { Database, Service, TimeOff, BlockedSlot } from './services/db_types';
+
+// The re-export for these types is needed since they are used standalone in other components.
+export type { Service, TimeOff, BlockedSlot };
 
 
-// These are custom types for the app, not directly from DB schema
-export interface Service {
-  id: string;
-  name: string;
-  price: number;
-  duration: number; // in minutes
+// --- Application-level types derived from DB schema for type safety ---
+
+// Base 'Row' types from the DB. These are the source of truth for data shape.
+export type Business = Database['public']['Tables']['businesses']['Row'];
+
+// For Barber and Appointment, we define a "friendly" type for use in the app,
+// converting JSON fields to specific object types. The raw DB types use `Json`.
+type DbBarberRow = Database['public']['Tables']['barbers']['Row'];
+export type Barber = Omit<DbBarberRow, 'services' | 'blockedSlots' | 'scheduleOverrides' | 'timeOff' | 'daily_location_overrides'> & {
+    services: Service[];
+    blockedSlots: BlockedSlot[];
+    scheduleOverrides: Record<string, { closed: boolean }>;
+    timeOff: TimeOff[];
+    daily_location_overrides: Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null;
 }
 
-export interface TimeOff {
-    id:string;
-    startDate: string; // YYYY-MM-DD
-    endDate: string; // YYYY-MM-DD
-    reason?: string;
+type DbAppointmentRow = Database['public']['Tables']['appointments']['Row'];
+export type Appointment = Omit<DbAppointmentRow, 'services'> & {
+    services: Service[];
 }
 
-export interface BlockedSlot {
-    id: string;
-    date: string; // YYYY-MM-DD
-    startTime: string; // HH:mm
-    duration: number; // in minutes
+export type Expense = Database['public']['Tables']['expenses']['Row'];
+export type AppConfig = Database['public']['Tables']['app_config']['Row'];
+export type BlockedCustomer = Database['public']['Tables']['blocked_customers']['Row'];
+export type CustomerReport = Database['public']['Tables']['customer_reports']['Row'];
+
+// --- Friendlier `Insert` and `Update` types for use within the application ---
+
+// Business types (no JSONB columns, so they can be used directly)
+export type BusinessInsert = Database['public']['Tables']['businesses']['Insert'];
+export type BusinessUpdate = Database['public']['Tables']['businesses']['Update'];
+
+// Barber types (redefined to use specific object/array types instead of generic Json)
+type DbBarberInsert = Database['public']['Tables']['barbers']['Insert'];
+export type BarberInsert = Omit<DbBarberInsert, 'services' | 'blockedSlots' | 'scheduleOverrides' | 'timeOff' | 'daily_location_overrides'> & {
+    services: Service[];
+    blockedSlots: BlockedSlot[];
+    scheduleOverrides: Record<string, { closed: boolean }>;
+    timeOff: TimeOff[];
+    daily_location_overrides: Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null;
 }
 
+type DbBarberUpdate = Database['public']['Tables']['barbers']['Update'];
+export type BarberUpdate = Omit<DbBarberUpdate, 'services' | 'blockedSlots' | 'scheduleOverrides' | 'timeOff' | 'daily_location_overrides'> & {
+    services?: Service[];
+    blockedSlots?: BlockedSlot[];
+    scheduleOverrides?: Record<string, { closed: boolean }>;
+    timeOff?: TimeOff[];
+    daily_location_overrides?: Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null;
+}
+
+// Appointment types (redefined for `services`)
+type DbAppointmentInsert = Database['public']['Tables']['appointments']['Insert'];
+export type AppointmentInsert = Omit<DbAppointmentInsert, 'services'> & {
+    services: Service[];
+}
+
+type DbAppointmentUpdate = Database['public']['Tables']['appointments']['Update'];
+export type AppointmentUpdate = Omit<DbAppointmentUpdate, 'services'> & {
+    services?: Service[];
+}
+
+// Other types (no JSONB columns)
+export type ExpenseInsert = Database['public']['Tables']['expenses']['Insert'];
+export type ExpenseUpdate = Database['public']['Tables']['expenses']['Update'];
+export type AppConfigUpdate = Database['public']['Tables']['app_config']['Update'];
+export type BlockedCustomerInsert = Database['public']['Tables']['blocked_customers']['Insert'];
+export type BlockedCustomerUpdate = Database['public']['Tables']['blocked_customers']['Update'];
+export type CustomerReportInsert = Database['public']['Tables']['customer_reports']['Insert'];
+export type CustomerReportUpdate = Database['public']['Tables']['customer_reports']['Update'];
+
+
+// Derived enums/unions from schema
+export type AppointmentStatus = Database['public']['Tables']['appointments']['Row']['status'];
+export type ReportStatus = Database['public']['Tables']['customer_reports']['Row']['status'];
+
+
+// Custom UI-specific types that are not in the database schema.
 export type ThemeName = 'default' | 'oceanic' | 'sunset';
-
-// Main application types, extending DB row types and overriding where needed
-export interface Business extends BusinessRow {
-  theme: ThemeName | null;
-}
-
-// Use Omit to handle the Json type mismatch between db and app.
-export interface Barber extends Omit<BarberRow, 'services' | 'timeOff' | 'blockedSlots' | 'scheduleOverrides'> {
-  services: Service[];
-  timeOff: TimeOff[];
-  scheduleOverrides: Record<string, { closed: boolean }>;
-  blockedSlots: BlockedSlot[];
-  preferredLanguage: Language | null;
-  allowedLanguages: Language[] | null;
-  showHelpTooltips: boolean;
-}
-
-// Use Omit to handle the Json type mismatch between db and app.
-export interface Appointment extends Omit<AppointmentRow, 'services'> {
-  services: Service[];
-}
-
-export interface Expense extends ExpenseRow {}
-
-export interface AppConfig extends AppConfigRow {}
-
-
-// Other types used in the UI
-export type AppointmentStatus = 'booked' | 'completed' | 'cancelled' | 'no-show';
 
 export interface TimeSlotDisplayInfo {
   startTime: string; // HH:mm format
@@ -69,3 +92,5 @@ export interface TimeSlotDisplayInfo {
   isPast: boolean;
   isWalkinOnly: boolean;
 }
+
+export type TopLevelTab = 'businesses' | 'financials' | 'expenses' | 'settings' | 'reports' | 'blockedCustomers';

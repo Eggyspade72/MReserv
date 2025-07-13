@@ -78,6 +78,14 @@ const en_modals = {
   subscriptionOverdueModalMessage: "Your salon's subscription is past due. To continue accepting new appointments, the owner must renew the subscription. Access will be restricted after {deadline}.",
   subscriptionGracePeriodTitle: "Subscription Grace Period",
   subscriptionGracePeriodMessage: "Your subscription is past due. Please renew by {deadline} to avoid service interruption.",
+  reportProblemTitle: "Report a Problem",
+  yourPhoneNumber: "Your Phone Number",
+  reportRegardingBusiness: "Regarding Business",
+  selectBusiness: "Select a business",
+  reportRegardingBarber: "Regarding Barber",
+  selectBarber: "Select a barber",
+  reportMessageLabel: "Message",
+  submitReportButton: "Submit Report",
 };
 
 const en_login = {
@@ -123,6 +131,7 @@ const en_customer_view = {
   bookingTypeLabel: "Booking Type",
   bookingTypeInShop: "In-Shop",
   bookingTypeOnLocation: "On-Location",
+  reportProblemButton: "Report a Problem",
 };
 
 const en_errors_and_confirmations = {
@@ -148,6 +157,10 @@ const en_errors_and_confirmations = {
   confirmResetAllAppointmentsAdmin: "Are you sure you want to delete all upcoming appointments for ALL barbers? This action cannot be undone.",
   confirmRemoveBusiness: "Are you sure you want to remove this business and all its barbers and appointments? This cannot be undone.",
   confirmRemoveExpense: "Are you sure you want to remove the expense '{name}'?",
+  errorCustomerIsBlocked: "This phone number is blocked from making new appointments. Please contact us for assistance.",
+  confirmMarkAsNoShow: "Are you sure you want to mark this appointment as a 'no-show'?",
+  errorAllReportFieldsRequired: "All fields are required to submit a report.",
+  confirmRemoveLogo: "Are you sure you want to remove the logo?",
 };
 
 const en_barber_dashboard = {
@@ -226,6 +239,10 @@ const en_barber_dashboard = {
   addBlockButton: "Add Block",
   activeBlockedSlots: "Active Time Blocks",
   unknownBarber: "Unknown Barber",
+  daySettingsTitle: "Day Settings",
+  daySettings_default: "Default (follow weekly schedule)",
+  daySettings_inShopOnly: "In-Shop Only for this day",
+  daySettings_onLocationOnly: "On-Location Only for this day",
 };
 
 const en_super_admin = {
@@ -317,6 +334,21 @@ const en_super_admin = {
   contactSettingsTitle: "Contact Settings",
   contactEmailLabel: "Public Contact Email",
   contactEmailPlaceholder: "info@yourapp.com",
+  logoSettingsTitle: "Logo & Branding",
+  uploadingLogo: "Uploading...",
+  uploadLogoButton: "Upload Logo",
+  dashboardTab_blockedCustomers: "Blocked Customers",
+  dashboardTab_reports: "Reports",
+  manageBlockedCustomersTitle: "Manage Blocked Customers",
+  blockedOnLabel: "Blocked On",
+  unblockButton: "Unblock",
+  noBlockedCustomers: "There are no blocked customers.",
+  customerReportsTitle: "Customer Reports",
+  reportFrom: "Report from",
+  reportRegarding: "Regarding",
+  reportedOnLabel: "Reported on",
+  noCustomerReports: "There are no customer reports.",
+  noShowLimitLabel: "No-Show Limit to Block Customer",
 };
 
 const en_days = {

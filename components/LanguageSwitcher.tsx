@@ -4,7 +4,7 @@ import { useLanguage, Language } from '../contexts/LanguageContext';
 import { ChevronDownIcon } from './Icons';
 
 interface LanguageSwitcherProps {
-  allowedLanguages?: Language[];
+  allowedLanguages?: string[] | null;
 }
 
 const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ allowedLanguages }) => {
@@ -21,10 +21,11 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ allowedLanguages })
   };
 
   const languagesToShow = useMemo(() => {
+    const validLanguageKeys = Object.keys(allLanguages) as Language[];
     if (allowedLanguages && allowedLanguages.length > 0) {
-      return allowedLanguages;
+      return validLanguageKeys.filter(lang => allowedLanguages.includes(lang));
     }
-    return Object.keys(allLanguages) as Language[];
+    return validLanguageKeys;
   }, [allowedLanguages]);
 
 

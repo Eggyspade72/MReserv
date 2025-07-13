@@ -5,6 +5,7 @@ import App from './App';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,12 +15,14 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <LanguageProvider>
-      <ThemeProvider>
-        <ConfirmationProvider>
-          <App />
-        </ConfirmationProvider>
-      </ThemeProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <ThemeProvider>
+          <ConfirmationProvider>
+            <App />
+          </ConfirmationProvider>
+        </ThemeProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

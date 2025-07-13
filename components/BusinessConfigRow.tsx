@@ -1,19 +1,20 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Business } from '../types';
 import { BuildingStorefrontIcon, TrashIcon, PencilIcon, SaveIcon, ExclamationTriangleIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useConfirmation } from '../contexts/ConfirmationContext';
 
 interface BusinessConfigRowProps {
     business: Business;
     onManage: () => void;
-    onRemove: () => void;
+    onRemove: (id: string) => void;
     onUpdateBusiness: (updatedBusiness: Business) => void;
 }
 
 const BusinessConfigRow: React.FC<BusinessConfigRowProps> = ({ business, onManage, onRemove, onUpdateBusiness }) => {
     const { t } = useLanguage();
+    const { showConfirmation } = useConfirmation();
     const [isEditing, setIsEditing] = useState(false);
     const [editableBusiness, setEditableBusiness] = useState(business);
 
@@ -31,9 +32,18 @@ const BusinessConfigRow: React.FC<BusinessConfigRowProps> = ({ business, onManag
         setIsEditing(false);
     };
 
-    const handleFieldChange = (field: keyof Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>, value: string | number | boolean) => {
+    const handleFieldChange = (field: keyof Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil' | 'theme'>, value: string | number | boolean) => {
         setEditableBusiness(prev => ({...prev, [field]: value}));
     };
+    
+    const handleRemoveClick = () => {
+        showConfirmation({
+            message: t('confirmRemoveBusiness'),
+            onConfirm: () => onRemove(business.id)
+        });
+    };
+    
+    const inputStyles = "w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-500";
 
     if (isEditing) {
         return (
@@ -41,19 +51,19 @@ const BusinessConfigRow: React.FC<BusinessConfigRowProps> = ({ business, onManag
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                         <label className="text-xs font-bold text-neutral-500 dark:text-neutral-300">{t('businessNameLabel')}</label>
-                        <input type="text" value={editableBusiness.name} onChange={(e) => handleFieldChange('name', e.target.value)} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-700"/>
+                        <input type="text" value={editableBusiness.name} onChange={(e) => handleFieldChange('name', e.target.value)} className={inputStyles}/>
                     </div>
                      <div>
                         <label className="text-xs font-bold text-neutral-500 dark:text-neutral-300">{t('addressLabel')}</label>
-                        <input type="text" value={editableBusiness.address || ''} onChange={(e) => handleFieldChange('address', e.target.value)} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-700"/>
+                        <input type="text" value={editableBusiness.address || ''} onChange={(e) => handleFieldChange('address', e.target.value)} className={inputStyles}/>
                     </div>
                     <div>
                         <label className="text-xs font-bold text-neutral-500 dark:text-neutral-300">{t('ownerNameLabel')}</label>
-                        <input type="text" value={editableBusiness.ownerName || ''} onChange={(e) => handleFieldChange('ownerName', e.target.value)} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-700"/>
+                        <input type="text" value={editableBusiness.ownerName || ''} onChange={(e) => handleFieldChange('ownerName', e.target.value)} className={inputStyles}/>
                     </div>
                     <div>
                         <label className="text-xs font-bold text-neutral-500 dark:text-neutral-300">{t('ownerEmailLabel')}</label>
-                        <input type="email" value={editableBusiness.ownerEmail || ''} onChange={(e) => handleFieldChange('ownerEmail', e.target.value)} className="w-full p-2 rounded-md bg-neutral-100 dark:bg-neutral-700"/>
+                        <input type="email" value={editableBusiness.ownerEmail || ''} onChange={(e) => handleFieldChange('ownerEmail', e.target.value)} className={inputStyles}/>
                     </div>
                 </div>
                  <div className="p-3 bg-neutral-100 dark:bg-neutral-700 rounded-lg">
@@ -66,11 +76,11 @@ const BusinessConfigRow: React.FC<BusinessConfigRowProps> = ({ business, onManag
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeHoursLabel')}</label>
-                            <input type="number" value={editableBusiness.cancellationFeeHours} onChange={e => handleFieldChange('cancellationFeeHours', parseInt(e.target.value) || 0)} className="w-full p-2 rounded-md bg-white dark:bg-neutral-800 text-sm"/>
+                            <input type="number" value={editableBusiness.cancellationFeeHours} onChange={e => handleFieldChange('cancellationFeeHours', parseInt(e.target.value) || 0)} className={`${inputStyles} bg-white dark:bg-neutral-800`}/>
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeAmountLabel')}</label>
-                            <input type="number" step="0.01" value={editableBusiness.cancellationFeeAmount} onChange={e => handleFieldChange('cancellationFeeAmount', parseFloat(e.target.value) || 0 )} className="w-full p-2 rounded-md bg-white dark:bg-neutral-800 text-sm"/>
+                            <input type="number" step="0.01" value={editableBusiness.cancellationFeeAmount} onChange={e => handleFieldChange('cancellationFeeAmount', parseFloat(e.target.value) || 0 )} className={`${inputStyles} bg-white dark:bg-neutral-800`}/>
                         </div>
                     </div>
                     )}
@@ -104,7 +114,7 @@ const BusinessConfigRow: React.FC<BusinessConfigRowProps> = ({ business, onManag
                     <PencilIcon className="w-5 h-5" />
                 </button>
                 <button
-                    onClick={onRemove}
+                    onClick={handleRemoveClick}
                     className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full transition-colors"
                     title={t('removeButton')}
                 >

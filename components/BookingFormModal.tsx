@@ -61,7 +61,7 @@ const BookingFormModal: React.FC<BookingFormModalProps> = ({
     }, { totalPrice: 0, totalDuration: 0 });
   }, [selectedServices]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -83,10 +83,16 @@ const BookingFormModal: React.FC<BookingFormModalProps> = ({
     }
     
     try {
-      onSubmit(name, phone, selectedServices, wantsEarlier);
+      await onSubmit(name, phone, selectedServices, wantsEarlier);
     } catch (err) {
       if (err instanceof Error) {
-        setError(err.message === 'ALREADY_BOOKED_TODAY' ? t('errorAlreadyBookedToday') : err.message);
+        if (err.message === 'CUSTOMER_BLOCKED') {
+          setError(t('errorCustomerIsBlocked'));
+        } else if (err.message === 'ALREADY_BOOKED_TODAY') {
+          setError(t('errorAlreadyBookedToday'));
+        } else {
+          setError(err.message);
+        }
       } else {
         setError(t('errorNamePhoneRequired'));
       }

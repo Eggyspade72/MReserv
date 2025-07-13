@@ -1,10 +1,31 @@
 
+export interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: number; // in minutes
+}
+
+export interface TimeOff {
+    id:string;
+    startDate: string; // YYYY-MM-DD
+    endDate: string; // YYYY-MM-DD
+    reason?: string;
+}
+
+export interface BlockedSlot {
+    id: string;
+    date: string; // YYYY-MM-DD
+    startTime: string; // HH:mm
+    duration: number; // in minutes
+}
+
 export type Json =
   | string
   | number
   | boolean
   | null
-  | { [key: string]: Json | undefined }
+  | { [key: string]: Json }
   | Json[]
 
 export interface Database {
@@ -21,6 +42,7 @@ export interface Database {
           enableWalkinBuffer: boolean
           id: number
           showServicesOnSelector: boolean
+          no_show_block_limit: number
         }
         Insert: {
           allowBarberLanguageControl?: boolean
@@ -32,6 +54,7 @@ export interface Database {
           enableWalkinBuffer?: boolean
           id?: number
           showServicesOnSelector?: boolean
+          no_show_block_limit?: number
         }
         Update: {
           allowBarberLanguageControl?: boolean
@@ -43,6 +66,7 @@ export interface Database {
           enableWalkinBuffer?: boolean
           id?: number
           showServicesOnSelector?: boolean
+          no_show_block_limit?: number
         }
       }
       appointments: {
@@ -107,6 +131,7 @@ export interface Database {
           preferredLanguage: string | null
           recurringClosedDays: number[]
           scheduleOverrides: Json
+          daily_location_overrides: Json | null
           services: Json
           showPricesOnBooking: boolean | null
           showServicesOnSelector: boolean | null
@@ -132,6 +157,7 @@ export interface Database {
           preferredLanguage?: string | null
           recurringClosedDays: number[]
           scheduleOverrides: Json
+          daily_location_overrides?: Json | null
           services: Json
           showPricesOnBooking?: boolean | null
           showServicesOnSelector?: boolean | null
@@ -157,6 +183,7 @@ export interface Database {
           preferredLanguage?: string | null
           recurringClosedDays?: number[]
           scheduleOverrides?: Json
+          daily_location_overrides?: Json | null
           services?: Json
           showPricesOnBooking?: boolean | null
           showServicesOnSelector?: boolean | null
@@ -181,6 +208,7 @@ export interface Database {
           subscriptionValidUntil: string
           suppressGracePeriodWarning: boolean | null
           theme: string | null
+          logo_url: string | null
         }
         Insert: {
           address?: string | null
@@ -196,6 +224,7 @@ export interface Database {
           subscriptionValidUntil: string
           suppressGracePeriodWarning?: boolean | null
           theme?: string | null
+          logo_url?: string | null
         }
         Update: {
           address?: string | null
@@ -211,6 +240,7 @@ export interface Database {
           subscriptionValidUntil?: string
           suppressGracePeriodWarning?: boolean | null
           theme?: string | null
+          logo_url?: string | null
         }
       }
       expenses: {
@@ -234,6 +264,58 @@ export interface Database {
           id?: string
           name?: string
           type?: "monthly" | "yearly" | "one-time"
+        }
+      }
+      blocked_customers: {
+        Row: {
+          id: string
+          customer_phone: string
+          is_blocked: boolean
+          blocked_at: string
+          reason: string | null
+        }
+        Insert: {
+          id?: string
+          customer_phone: string
+          is_blocked?: boolean
+          blocked_at?: string
+          reason?: string | null
+        }
+        Update: {
+          id?: string
+          customer_phone?: string
+          is_blocked?: boolean
+          blocked_at?: string
+          reason?: string | null
+        }
+      }
+      customer_reports: {
+        Row: {
+            id: string
+            created_at: string
+            reported_by_customer_phone: string
+            reported_barber_id: string
+            report_message: string
+            status: "new" | "in_progress" | "resolved"
+            businessId: string
+        }
+        Insert: {
+            id?: string
+            created_at?: string
+            reported_by_customer_phone: string
+            reported_barber_id: string
+            report_message: string
+            status?: "new" | "in_progress" | "resolved"
+            businessId: string
+        }
+        Update: {
+            id?: string
+            created_at?: string
+            reported_by_customer_phone?: string
+            reported_barber_id?: string
+            report_message?: string
+            status?: "new" | "in_progress" | "resolved"
+            businessId?: string
         }
       }
     }
