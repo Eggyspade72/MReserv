@@ -1,5 +1,4 @@
-// Dit is de nieuwe ES Module syntax
-export default {
+module.exports = {
   plugins: {
     tailwindcss: {},
     autoprefixer: {},
