@@ -15,15 +15,5 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <LanguageProvider>
-        <ThemeProvider>
-          <ConfirmationProvider>
-            <App />
-          </ConfirmationProvider>
-        </ThemeProvider>
-      </LanguageProvider>
-    </ErrorBoundary>
-  </React.StrictMode>
+  <App />
 );
