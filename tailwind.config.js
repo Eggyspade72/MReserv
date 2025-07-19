@@ -4,10 +4,7 @@
 export default {
   content: [
     "./index.html",
-    "./*.{js,ts,jsx,tsx}",
-    "./components/**/*.{js,ts,jsx,tsx}",
-    "./contexts/**/*.{js,ts,jsx,tsx}",
-    "./services/**/*.{js,ts,jsx,tsx}",
+    "./**/*.{js,ts,jsx,tsx}",
   ],
   darkMode: 'class',
   theme: {
@@ -28,4 +25,4 @@ export default {
   },
   plugins: [],
 }
->>>>>>> 4deff74e545c79a530db87d2283a14dfe940fe57
+
