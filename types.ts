@@ -1,8 +1,26 @@
 
-import type { Database, Service, TimeOff, BlockedSlot } from './services/db_types';
+import type { Database, Json } from './services/db_types';
 
-// The re-export for these types is needed since they are used standalone in other components.
-export type { Service, TimeOff, BlockedSlot };
+export interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: number; // in minutes
+}
+
+export interface TimeOff {
+    id:string;
+    startDate: string; // YYYY-MM-DD
+    endDate: string; // YYYY-MM-DD
+    reason?: string;
+}
+
+export interface BlockedSlot {
+    id: string;
+    date: string; // YYYY-MM-DD
+    startTime: string; // HH:mm
+    duration: number; // in minutes
+}
 
 
 // --- Application-level types derived from DB schema for type safety ---
@@ -13,7 +31,8 @@ export type Business = Database['public']['Tables']['businesses']['Row'];
 // For Barber and Appointment, we define a "friendly" type for use in the app,
 // converting JSON fields to specific object types. The raw DB types use `Json`.
 type DbBarberRow = Database['public']['Tables']['barbers']['Row'];
-export type Barber = Omit<DbBarberRow, 'services' | 'blockedSlots' | 'scheduleOverrides' | 'timeOff' | 'daily_location_overrides'> & {
+interface BarberBase extends Omit<DbBarberRow, 'services' | 'blockedSlots' | 'scheduleOverrides' | 'timeOff' | 'daily_location_overrides'> {}
+export interface Barber extends BarberBase {
     services: Service[];
     blockedSlots: BlockedSlot[];
     scheduleOverrides: Record<string, { closed: boolean }>;
@@ -22,7 +41,8 @@ export type Barber = Omit<DbBarberRow, 'services' | 'blockedSlots' | 'scheduleOv
 }
 
 type DbAppointmentRow = Database['public']['Tables']['appointments']['Row'];
-export type Appointment = Omit<DbAppointmentRow, 'services'> & {
+interface AppointmentBase extends Omit<DbAppointmentRow, 'services'> {}
+export interface Appointment extends AppointmentBase {
     services: Service[];
 }
 
@@ -31,43 +51,22 @@ export type AppConfig = Database['public']['Tables']['app_config']['Row'];
 export type BlockedCustomer = Database['public']['Tables']['blocked_customers']['Row'];
 export type CustomerReport = Database['public']['Tables']['customer_reports']['Row'];
 
-// --- Friendlier `Insert` and `Update` types for use within the application ---
+// --- DB `Insert` and `Update` types for use within the application's API layer ---
+// These are direct aliases to the DB types to ensure compatibility.
 
-// Business types (no JSONB columns, so they can be used directly)
+// Business types
 export type BusinessInsert = Database['public']['Tables']['businesses']['Insert'];
 export type BusinessUpdate = Database['public']['Tables']['businesses']['Update'];
 
-// Barber types (redefined to use specific object/array types instead of generic Json)
-type DbBarberInsert = Database['public']['Tables']['barbers']['Insert'];
-export type BarberInsert = Omit<DbBarberInsert, 'services' | 'blockedSlots' | 'scheduleOverrides' | 'timeOff' | 'daily_location_overrides'> & {
-    services: Service[];
-    blockedSlots: BlockedSlot[];
-    scheduleOverrides: Record<string, { closed: boolean }>;
-    timeOff: TimeOff[];
-    daily_location_overrides: Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null;
-}
+// Barber types
+export type BarberInsert = Database['public']['Tables']['barbers']['Insert'];
+export type BarberUpdate = Database['public']['Tables']['barbers']['Update'];
 
-type DbBarberUpdate = Database['public']['Tables']['barbers']['Update'];
-export type BarberUpdate = Omit<DbBarberUpdate, 'services' | 'blockedSlots' | 'scheduleOverrides' | 'timeOff' | 'daily_location_overrides'> & {
-    services?: Service[];
-    blockedSlots?: BlockedSlot[];
-    scheduleOverrides?: Record<string, { closed: boolean }>;
-    timeOff?: TimeOff[];
-    daily_location_overrides?: Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null;
-}
+// Appointment types
+export type AppointmentInsert = Database['public']['Tables']['appointments']['Insert'];
+export type AppointmentUpdate = Database['public']['Tables']['appointments']['Update'];
 
-// Appointment types (redefined for `services`)
-type DbAppointmentInsert = Database['public']['Tables']['appointments']['Insert'];
-export type AppointmentInsert = Omit<DbAppointmentInsert, 'services'> & {
-    services: Service[];
-}
-
-type DbAppointmentUpdate = Database['public']['Tables']['appointments']['Update'];
-export type AppointmentUpdate = Omit<DbAppointmentUpdate, 'services'> & {
-    services?: Service[];
-}
-
-// Other types (no JSONB columns)
+// Other types
 export type ExpenseInsert = Database['public']['Tables']['expenses']['Insert'];
 export type ExpenseUpdate = Database['public']['Tables']['expenses']['Update'];
 export type AppConfigUpdate = Database['public']['Tables']['app_config']['Update'];
@@ -94,3 +93,6 @@ export interface TimeSlotDisplayInfo {
 }
 
 export type TopLevelTab = 'businesses' | 'financials' | 'expenses' | 'settings' | 'reports' | 'blockedCustomers';
+
+// Re-export Json for use in other parts of the app for casting
+export type { Json };

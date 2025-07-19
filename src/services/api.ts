@@ -1,4 +1,5 @@
 
+
 import { supabase } from './supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { 
@@ -87,12 +88,12 @@ export async function addBusiness(business: Omit<Business, 'id' | 'subscriptionS
         subscriptionValidUntil: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
     };
 
-    const { error } = await supabase.from('businesses').insert([businessToAdd] as any);
+    const { error } = await supabase.from('businesses').insert([businessToAdd]);
     if (error) throw error;
 }
 
 export async function updateBusiness(id: string, updates: BusinessUpdate) {
-    const { error } = await supabase.from('businesses').update(updates as any).eq('id', id);
+    const { error } = await supabase.from('businesses').update(updates).eq('id', id);
     if (error) {
         console.error("Supabase updateBusiness error:", error);
         throw error;
@@ -189,7 +190,7 @@ export async function createBarber(credentials: SignUpCredentials, businessId: s
 export async function updateBarber(id: string, updates: BarberUpdate) {
     // The 'updates' object should already conform to the DB schema,
     // as BarberUpdate is now a direct alias for the DB update type.
-    const { error } = await supabase.from('barbers').update(updates as any).eq('id', id);
+    const { error } = await supabase.from('barbers').update(updates).eq('id', id);
     if (error) throw error;
 }
 
@@ -213,12 +214,12 @@ export async function getAppointments(): Promise<Appointment[]> {
 }
 
 export async function addAppointment(appointment: AppointmentInsert) {
-    const { error } = await supabase.from('appointments').insert([appointment] as any);
+    const { error } = await supabase.from('appointments').insert([appointment]);
     if (error) throw error;
 }
 
 export async function updateAppointment(id: string, updates: AppointmentUpdate) {
-    const { error } = await supabase.from('appointments').update(updates as any).eq('id', id);
+    const { error } = await supabase.from('appointments').update(updates).eq('id', id);
     if (error) throw error;
 }
 
@@ -241,7 +242,7 @@ export async function getAppConfig(): Promise<AppConfig> {
 }
 
 export async function updateAppConfig(newConfig: AppConfigUpdate) {
-    const { error } = await supabase.from('app_config').update(newConfig as any).eq('id', 1); // Assuming config ID is always 1
+    const { error } = await supabase.from('app_config').update(newConfig).eq('id', 1); // Assuming config ID is always 1
     if (error) throw error;
 }
 
@@ -254,7 +255,7 @@ export async function getExpenses(): Promise<Expense[]> {
 }
 
 export async function addExpense(expense: ExpenseInsert) {
-    const { error } = await supabase.from('expenses').insert([expense] as any);
+    const { error } = await supabase.from('expenses').insert([expense]);
     if (error) throw error;
 }
 
@@ -297,7 +298,7 @@ export async function getBlockedCustomers(): Promise<BlockedCustomer[]> {
 
 export async function unblockCustomer(phone: string) {
     const updates: Database['public']['Tables']['blocked_customers']['Update'] = { is_blocked: false };
-    const { error } = await supabase.from('blocked_customers').update(updates as any).eq('customer_phone', phone);
+    const { error } = await supabase.from('blocked_customers').update(updates).eq('customer_phone', phone);
     if (error) throw error;
 }
 
@@ -309,13 +310,13 @@ export async function getCustomerReports(): Promise<CustomerReport[]> {
 }
 
 export async function addCustomerReport(report: CustomerReportInsert) {
-    const { error } = await supabase.from('customer_reports').insert([report] as any);
+    const { error } = await supabase.from('customer_reports').insert([report]);
     if (error) throw error;
 }
 
 export async function updateCustomerReportStatus(id: string, status: ReportStatus) {
     const updates: Database['public']['Tables']['customer_reports']['Update'] = { status };
-    const { error } = await supabase.from('customer_reports').update(updates as any).eq('id', id);
+    const { error } = await supabase.from('customer_reports').update(updates).eq('id', id);
     if (error) throw error;
 }
 

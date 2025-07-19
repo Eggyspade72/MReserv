@@ -1,50 +1,37 @@
 
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
-import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business, TopLevelTab, CustomerReport, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate } from './types';
-import * as api from './services/api';
-import BarberSelector from './components/BarberSelector';
-import BarberScheduleDisplay from './components/BarberScheduleDisplay';
-import BookingFormModal from './components/BookingFormModal';
-import LoginModal from './components/LoginModal';
-import BarberDashboard from './components/BarberDashboard';
-import CustomerLookupModal from './components/CustomerLookupModal';
-import CustomerAppointmentsModal from './components/CustomerAppointmentsModal';
-import SuperAdminPanel from './components/SuperAdminPanel';
-import SubscriptionOverdueModal from './components/SubscriptionOverdueModal';
-import ContactModal from './components/ContactModal';
-import NetworkErrorModal from './components/NetworkErrorModal';
-import ReportProblemModal from './components/ReportProblemModal';
-import { UserIcon, CalendarIcon, CogIcon, ArrowLeftIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PhoneIcon, MapPinIcon, LogoutIcon, HomeIcon, SpinnerIcon, ExclamationTriangleIcon } from './components/Icons';
-import { useLanguage, Language } from './contexts/LanguageContext';
-import { useConfirmation } from './contexts/ConfirmationContext';
-import ThemeToggle from './components/ThemeToggle';
-import LanguageSwitcher from './components/LanguageSwitcher';
-import AuthMenu from './components/AuthMenu';
-import Logo from './components/Logo';
-import { SUBSCRIPTION_GRACE_PERIOD_DAYS } from './constants';
+import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business, TopLevelTab, CustomerReport, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate, BarberUpdate, Json, BarberInsert } from '@/types';
+import * as api from '@/services/api';
+import BarberSelector from '@/components/BarberSelector';
+import BarberScheduleDisplay from '@/components/BarberScheduleDisplay';
+import BookingFormModal from '@/components/BookingFormModal';
+import LoginModal from '@/components/LoginModal';
+import BarberDashboard from '@/components/BarberDashboard';
+import CustomerLookupModal from '@/components/CustomerLookupModal';
+import CustomerAppointmentsModal from '@/components/CustomerAppointmentsModal';
+import SuperAdminPanel from '@/components/SuperAdminPanel';
+import SubscriptionOverdueModal from '@/components/SubscriptionOverdueModal';
+import ContactModal from '@/components/ContactModal';
+import NetworkErrorModal from '@/components/NetworkErrorModal';
+import ReportProblemModal from '@/components/ReportProblemModal';
+import { UserIcon, CalendarIcon, CogIcon, ArrowLeftIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PhoneIcon, MapPinIcon, LogoutIcon, HomeIcon, SpinnerIcon, ExclamationTriangleIcon } from '@/components/Icons';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useConfirmation } from '@/contexts/ConfirmationContext';
+import ThemeToggle from '@/components/ThemeToggle';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import AuthMenu from '@/components/AuthMenu';
+import Logo from '@/components/Logo';
+import { SUBSCRIPTION_GRACE_PERIOD_DAYS } from '@/constants';
+import { isBarberEffectivelyClosed } from '@/utils';
 
 type AppSession = {
     auth: SupabaseSession;
     profile: Barber | null; // For barbers
     isOwner: boolean;
 } | null;
-
-// Helper to check if a barber is effectively closed
-const isBarberEffectivelyClosed = (barber: Barber, business: Business | undefined) => {
-    const isClosedBySchedule = barber.recurringClosedDays.length === 7 && Object.keys(barber.scheduleOverrides).length === 0 && (barber.services.length === 0 && barber.onLocationMode !== 'exclusive');
-    
-    if (!business) return true; // Can't operate without a business
-
-    const now = new Date();
-    const validUntilDate = new Date(business.subscriptionValidUntil);
-    const gracePeriodEndDate = new Date(new Date(business.subscriptionValidUntil).setDate(validUntilDate.getDate() + SUBSCRIPTION_GRACE_PERIOD_DAYS));
-    
-    const isClosedBySubscription = business.subscriptionStatus === 'cancelled' || (business.subscriptionStatus === 'past_due' && now > gracePeriodEndDate);
-
-    return isClosedBySchedule || isClosedBySubscription;
-};
 
 interface BookingTypeTabProps {
   type: 'in-shop' | 'on-location';
@@ -175,6 +162,17 @@ const App: React.FC = () => {
       authListener?.subscription.unsubscribe();
     };
   }, [fetchData]);
+
+  // Handle fading out the static loader
+  useEffect(() => {
+    const loader = document.getElementById('loading-screen');
+    if (loader) {
+      if (!isLoading) {
+        // Add a class to fade it out
+        loader.classList.add('loaded');
+      }
+    }
+  }, [isLoading]);
 
 
   useEffect(() => {
@@ -309,7 +307,7 @@ const App: React.FC = () => {
         slotTime: selectedSlotTime,
         customerName,
         customerPhone,
-        services: selectedServices,
+        services: selectedServices as unknown as Json,
         totalDuration,
         totalPrice,
         status: 'booked',
@@ -348,29 +346,26 @@ const App: React.FC = () => {
   };
 
   const handleAddBarber = async (newBarberData: api.SignUpCredentials, businessId: string) => {
-    // Step 1: Create the auth user.
-    const { data: authData, error: authError } = await api.createBarberAuthUser(newBarberData);
+    try {
+        // This single API call creates the auth user and passes the businessId
+        // in the metadata for the backend trigger to use.
+        const { error } = await api.createBarber(newBarberData, businessId);
 
-    if (authError || !authData.user) {
-        console.error("Failed to create barber auth user:", authError);
-        alert(`Error creating barber auth user: ${authError?.message || 'An unknown authentication error occurred.'}`);
-        return;
-    }
+        if (error) {
+            // Re-throw to be handled by the catch block.
+            throw error;
+        }
 
-    // Step 2: Create the public profile with defaults.
-    const { user } = authData;
-    const { error: profileError } = await api.addBarberProfile(user.id, user.email!, newBarberData.name, businessId);
-
-    if (profileError) {
-        // This is a critical failure. The auth user exists but the profile doesn't. Attempt to clean up.
-        console.error("CRITICAL: Auth user created but profile insertion failed.", profileError);
-        alert(`CRITICAL ERROR: Failed to create barber profile: ${profileError.message}. Attempting to delete the orphaned user. Please verify.`);
-        await api.removeBarber(user.id); // Attempt to remove the orphaned auth user.
-    } else {
-        // Success!
+        // If successful, the backend trigger has created the profile.
+        // We just need to refresh the data to show the new barber.
         await fetchData();
+
+    } catch (error) {
+        console.error("Failed to add new barber:", { error });
+        alert(`Error creating barber: ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
     }
   };
+
 
   const handleAddBusiness = async (newBusinessData: Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>) => {
     await api.addBusiness(newBusinessData);
@@ -379,7 +374,7 @@ const App: React.FC = () => {
   
   const handleUpdateBarber = async (updatedBarber: Barber) => {
     const business = businesses.find(b => b.id === updatedBarber.businessId);
-    await api.updateBarber(updatedBarber.id, updatedBarber);
+    await api.updateBarber(updatedBarber.id, updatedBarber as unknown as BarberUpdate);
     await fetchData();
     if (isBarberEffectivelyClosed(updatedBarber, business) && selectedBarberId === updatedBarber.id) {
         setSelectedBarberId(null); 
@@ -461,7 +456,7 @@ const App: React.FC = () => {
     const barberToUpdate: Barber = { ...currentlyLoggedInUser, ...details, services: newServices };
     
     // Update profile data in 'barbers' table
-    await api.updateBarber(currentlyLoggedInUser.id, barberToUpdate);
+    await api.updateBarber(currentlyLoggedInUser.id, barberToUpdate as unknown as BarberUpdate);
     
     // Update password in 'auth.users' if a new one is provided
     if(newPassword) {
@@ -556,12 +551,10 @@ const App: React.FC = () => {
     // Maybe show a success message
   };
 
-  if (isLoading) {
-    return (
-        <div className="min-h-screen flex items-center justify-center">
-            <SpinnerIcon className="w-12 h-12 text-primary" />
-        </div>
-    )
+  if (isLoading && !appConfig) {
+      // While the initial critical load is happening, the static loader is shown.
+      // Return null here to prevent rendering anything until loading is complete.
+      return null;
   }
 
   // If loading is finished but there's a network error, show the modal.
@@ -583,7 +576,7 @@ const App: React.FC = () => {
     // but we keep it as a fallback.
     return (
         <div className="min-h-screen flex items-center justify-center">
-            <p>Could not load application configuration.</p>
+            <p className="text-base text-neutral-700 dark:text-neutral-300">Could not load application configuration.</p>
         </div>
     );
   }

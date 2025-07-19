@@ -6,7 +6,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import './input.css';
+
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

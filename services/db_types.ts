@@ -1,32 +1,10 @@
-
-export interface Service {
-  id: string;
-  name: string;
-  price: number;
-  duration: number; // in minutes
-}
-
-export interface TimeOff {
-    id:string;
-    startDate: string; // YYYY-MM-DD
-    endDate: string; // YYYY-MM-DD
-    reason?: string;
-}
-
-export interface BlockedSlot {
-    id: string;
-    date: string; // YYYY-MM-DD
-    startTime: string; // HH:mm
-    duration: number; // in minutes
-}
-
 export type Json =
   | string
   | number
   | boolean
   | null
-  | { [key: string]: Json }
-  | Json[]
+  | { [key: string]: any }
+  | any[]
 
 export interface Database {
   public: {

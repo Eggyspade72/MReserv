@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Appointment, Barber } from '../types';
 import { CalendarIcon, ClockIcon, UserCircleIcon, TrashIcon, XCircleIcon, PhoneIcon, HomeIcon } from './Icons';
@@ -84,7 +85,7 @@ const CustomerAppointmentsModal: React.FC<CustomerAppointmentsModalProps> = ({
                     <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-600">
                        <h4 className="text-xs font-bold uppercase text-neutral-500 dark:text-neutral-400 mb-1">{t('appointmentServices')}</h4>
                        <ul className="text-sm text-neutral-700 dark:text-neutral-300 list-disc list-inside">
-                           {apt.services.map(s => <li key={s.id}>{s.name} (€{s.price})</li>)}
+                           {apt.services.map(s => <li key={s.id} className="py-0.5">{s.name} (€{s.price})</li>)}
                        </ul>
                        <p className="font-bold text-sm mt-1">{t('totalPrice')}: €{apt.totalPrice}</p>
                     </div>

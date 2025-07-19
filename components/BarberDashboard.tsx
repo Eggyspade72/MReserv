@@ -102,7 +102,7 @@ const SimplePieChart: React.FC<{ data: { label: string; value: number; color: st
             ></div>
             <ul className="text-sm space-y-2">
                 {data.map(item => (
-                    <li key={item.label} className="flex items-center">
+                    <li key={item.label} className="flex items-center text-neutral-700 dark:text-neutral-300">
                         <span className="w-3 h-3 rounded-full me-2" style={{ backgroundColor: item.color }}></span>
                         <span>{item.label}: €{item.value.toFixed(2)} ({((item.value / total) * 100).toFixed(0)}%)</span>
                     </li>

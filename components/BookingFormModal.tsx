@@ -138,9 +138,9 @@ const BookingFormModal: React.FC<BookingFormModalProps> = ({
             </div>
             <div className="mt-4 p-3 bg-neutral-100 dark:bg-neutral-700 rounded-lg flex justify-end items-center font-semibold gap-6">
                 {(barber.showPricesOnBooking ?? true) && (
-                    <p>{t('totalPrice')}: <span className="text-primary text-lg ms-1">€{totalPrice}</span></p>
+                    <p className="text-base text-neutral-700 dark:text-neutral-300">{t('totalPrice')}: <span className="text-primary text-lg ms-1">€{totalPrice}</span></p>
                 )}
-                <p>{t('totalDuration')}: <span className="text-primary text-lg ms-1">{totalDuration} {t('minutesSuffix')}</span></p>
+                <p className="text-base text-neutral-700 dark:text-neutral-300">{t('totalDuration')}: <span className="text-primary text-lg ms-1">{totalDuration} {t('minutesSuffix')}</span></p>
             </div>
         </div>
 

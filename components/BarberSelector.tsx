@@ -1,9 +1,11 @@
 
 
+
 import React from 'react';
 import { Barber, Business } from '../types';
 import { ChevronRightIcon, PhoneIcon, MapPinIcon, LockClosedIcon, ClockIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
+import { isBarberEffectivelyClosed } from '../utils';
 
 interface BarberSelectorProps {
   barbers: Barber[];
@@ -15,13 +17,9 @@ interface BarberSelectorProps {
 const BarberSelector: React.FC<BarberSelectorProps> = ({ barbers, businesses, onSelectBarber, showServicesOnSelector }) => {
   const { t } = useLanguage();
   
-  const isBarberEffectivelyClosed = (barber: Barber) => {
-    // A barber is considered closed if all 7 days are recurring closed days, they have no overrides, and no services for on-location only mode.
-    return barber.recurringClosedDays.length === 7 && Object.keys(barber.scheduleOverrides).length === 0 && (barber.services.length === 0 && barber.onLocationMode !== 'exclusive');
-  };
-
-  const activeBarbers = barbers.filter(b => !isBarberEffectivelyClosed(b));
-  const closedBarbers = barbers.filter(b => isBarberEffectivelyClosed(b));
+  // Correctly filter and sort barbers by their effective status, including subscription checks.
+  const activeBarbers = barbers.filter(b => !isBarberEffectivelyClosed(b, businesses.find(biz => biz.id === b.businessId)));
+  const closedBarbers = barbers.filter(b => isBarberEffectivelyClosed(b, businesses.find(biz => biz.id === b.businessId)));
   const sortedBarbers = [...activeBarbers, ...closedBarbers];
 
   if (sortedBarbers.length === 0) {
@@ -31,8 +29,9 @@ const BarberSelector: React.FC<BarberSelectorProps> = ({ barbers, businesses, on
   return (
     <div className="flex flex-wrap justify-center gap-6">
       {sortedBarbers.map(barber => {
-        const isClosed = isBarberEffectivelyClosed(barber);
         const business = businesses.find(b => b.id === barber.businessId);
+        // This check is now consistent with the one used for filtering.
+        const isClosed = isBarberEffectivelyClosed(barber, business);
         const shouldShowServices = showServicesOnSelector && (barber.showServicesOnSelector ?? true);
 
         return (
