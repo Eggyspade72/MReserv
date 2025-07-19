@@ -1,31 +1,30 @@
 
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
-import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business, TopLevelTab, CustomerReport, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate, BarberUpdate, Json, BarberInsert } from '@/types';
-import * as api from '@/services/api';
-import BarberSelector from '@/components/BarberSelector';
-import BarberScheduleDisplay from '@/components/BarberScheduleDisplay';
-import BookingFormModal from '@/components/BookingFormModal';
-import LoginModal from '@/components/LoginModal';
-import BarberDashboard from '@/components/BarberDashboard';
-import CustomerLookupModal from '@/components/CustomerLookupModal';
-import CustomerAppointmentsModal from '@/components/CustomerAppointmentsModal';
-import SuperAdminPanel from '@/components/SuperAdminPanel';
-import SubscriptionOverdueModal from '@/components/SubscriptionOverdueModal';
-import ContactModal from '@/components/ContactModal';
-import NetworkErrorModal from '@/components/NetworkErrorModal';
-import ReportProblemModal from '@/components/ReportProblemModal';
-import { UserIcon, CalendarIcon, CogIcon, ArrowLeftIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PhoneIcon, MapPinIcon, LogoutIcon, HomeIcon, SpinnerIcon, ExclamationTriangleIcon } from '@/components/Icons';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useConfirmation } from '@/contexts/ConfirmationContext';
-import ThemeToggle from '@/components/ThemeToggle';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
-import AuthMenu from '@/components/AuthMenu';
-import Logo from '@/components/Logo';
-import { SUBSCRIPTION_GRACE_PERIOD_DAYS } from '@/constants';
-import { isBarberEffectivelyClosed } from '@/utils';
+import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business, TopLevelTab, CustomerReport, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate, BarberUpdate, Json, BarberInsert } from './types';
+import * as api from './services/api';
+import BarberSelector from './components/BarberSelector';
+import BarberScheduleDisplay from './components/BarberScheduleDisplay';
+import BookingFormModal from './components/BookingFormModal';
+import LoginModal from './components/LoginModal';
+import BarberDashboard from './components/BarberDashboard';
+import CustomerLookupModal from './components/CustomerLookupModal';
+import CustomerAppointmentsModal from './components/CustomerAppointmentsModal';
+import SuperAdminPanel from './components/SuperAdminPanel';
+import SubscriptionOverdueModal from './components/SubscriptionOverdueModal';
+import ContactModal from './components/ContactModal';
+import NetworkErrorModal from './components/NetworkErrorModal';
+import ReportProblemModal from './components/ReportProblemModal';
+import { UserIcon, CalendarIcon, CogIcon, ArrowLeftIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PhoneIcon, MapPinIcon, LogoutIcon, HomeIcon, SpinnerIcon, ExclamationTriangleIcon } from './components/Icons';
+import { useLanguage } from './contexts/LanguageContext';
+import { useConfirmation } from './contexts/ConfirmationContext';
+import ThemeToggle from './components/ThemeToggle';
+import LanguageSwitcher from './components/LanguageSwitcher';
+import AuthMenu from './components/AuthMenu';
+import Logo from './components/Logo';
+import { SUBSCRIPTION_GRACE_PERIOD_DAYS } from './constants';
+import { isBarberEffectivelyClosed } from './utils';
 
 type AppSession = {
     auth: SupabaseSession;
