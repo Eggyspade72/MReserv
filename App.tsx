@@ -1,36 +1,52 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import type { Session as SupabaseSession } from '@supabase/supabase-js';
-import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business, TopLevelTab, CustomerReport, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate, BarberUpdate, Json, BarberInsert } from './types';
-import * as api from "@/services/api";
-import BarberSelector from "@/components/BarberSelector";
-import BarberScheduleDisplay from '@/components/BarberScheduleDisplay';
-import BookingFormModal from '@/components/BookingFormModal';
-import BarberLoginModal from '@/components/BarberLoginModal';
-import SuperAdminLoginModal from '@/components/SuperAdminLoginModal';
+
+import AuthMenu from '@/components/AuthMenu';
 import BarberDashboard from '@/components/BarberDashboard';
-import CustomerLookupModal from '@/components/CustomerLookupModal';
-import CustomerAppointmentsModal from '@/components/CustomerAppointmentsModal';
-import SuperAdminPanel from '@/components/SuperAdminPanel';
-import SubscriptionOverdueModal from '@/components/SubscriptionOverdueModal';
+import BarberLoginModal from '@/components/BarberLoginModal';
+import BarberScheduleDisplay from '@/components/BarberScheduleDisplay';
+import BarberSelector from "@/components/BarberSelector";
+import BookingFormModal from '@/components/BookingFormModal';
 import ContactModal from '@/components/ContactModal';
+import CustomerAppointmentsModal from '@/components/CustomerAppointmentsModal';
+import CustomerLookupModal from '@/components/CustomerLookupModal';
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon, SpinnerIcon, UserIcon } from '@/components/Icons';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import Logo from '@/components/Logo';
 import NetworkErrorModal from '@/components/NetworkErrorModal';
 import ReportProblemModal from '@/components/ReportProblemModal';
-import { UserIcon, CalendarIcon, CogIcon, ArrowLeftIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PhoneIcon, MapPinIcon, LogoutIcon, HomeIcon, SpinnerIcon, ExclamationTriangleIcon } from '@/components/Icons';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useConfirmation } from '@/contexts/ConfirmationContext';
+import SubscriptionOverdueModal from '@/components/SubscriptionOverdueModal';
+import SuperAdminLoginModal from '@/components/SuperAdminLoginModal';
+import SuperAdminPanel from '@/components/SuperAdminPanel';
 import ThemeToggle from '@/components/ThemeToggle';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
-import AuthMenu from '@/components/AuthMenu';
-import Logo from '@/components/Logo';
+import { useConfirmation } from '@/contexts/ConfirmationContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import * as api from "@/services/api";
+import type { Session as SupabaseSession } from '@supabase/supabase-js';
+import React, { useCallback, useEffect, useState } from 'react';
 import { SUBSCRIPTION_GRACE_PERIOD_DAYS } from './constants';
-import { isBarberEffectivelyClosed } from './utils';
+import { AppConfig, AppConfigUpdate, Appointment, AppointmentInsert, Barber, BarberUpdate, Business, CustomerReportInsert, Expense, ExpenseInsert, Json, Service, TopLevelTab } from './types';
 
 type AppSession = {
     auth: SupabaseSession;
     profile: Barber | null; // For barbers
     isOwner: boolean;
 } | null;
+
+interface BookingTypeTabProps {
+  type: 'in-shop' | 'on-location';
+  children: React.ReactNode;
+  bookingType: 'in-shop' | 'on-location';
+  onClick: (type: 'in-shop' | 'on-location') => void;
+}
+
+const BookingTypeTab: React.FC<BookingTypeTabProps> = ({ type, children, bookingType, onClick }) => (
+  <button
+    onClick={() => onClick(type)}
+    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${bookingType === type ? 'border-primary text-primary' : 'border-transparent text-neutral-500 hover:text-primary'}`}
+  >
+    {children}
+  </button>
+);
 
 const App: React.FC = () => {
   const { t, language, setLanguage } = useLanguage();
