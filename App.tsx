@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
 import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business, TopLevelTab, CustomerReport, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate, BarberUpdate, Json, BarberInsert } from './types';
@@ -32,22 +31,6 @@ type AppSession = {
     profile: Barber | null; // For barbers
     isOwner: boolean;
 } | null;
-
-interface BookingTypeTabProps {
-  type: 'in-shop' | 'on-location';
-  children: React.ReactNode;
-  bookingType: 'in-shop' | 'on-location';
-  onClick: (type: 'in-shop' | 'on-location') => void;
-}
-
-const BookingTypeTab: React.FC<BookingTypeTabProps> = ({ type, children, bookingType, onClick }) => (
-  <button
-    onClick={() => onClick(type)}
-    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${bookingType === type ? 'border-primary text-primary' : 'border-transparent text-neutral-500 hover:text-primary'}`}
-  >
-    {children}
-  </button>
-);
 
 const App: React.FC = () => {
   const { t, language, setLanguage } = useLanguage();

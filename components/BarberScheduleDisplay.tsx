@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 import React from 'react';
 import { Barber, Appointment, TimeSlotDisplayInfo, AppConfig } from '../types';
 import { ClockIcon, LockClosedIcon, HomeIcon, MapPinIcon } from './Icons';

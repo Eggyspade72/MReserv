@@ -1,6 +1,4 @@
 
-
-
 import type { Database, Json } from './services/db_types';
 
 export interface Service {

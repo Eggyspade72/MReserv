@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
       modules: {
         localsConvention: 'camelCase'
       },
-      postcss: './postcss.config.js'
+      postcss: './postcss.config.cjs'
     }
   };
 });

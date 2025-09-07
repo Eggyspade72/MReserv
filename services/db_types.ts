@@ -307,16 +307,16 @@ export interface Database {
           user_id_to_delete: string
         },
         // FIX: The Supabase client's type inference was failing, causing arguments to be typed as `never`.
-        // Changing the return type for RPC functions without a return value to `null` resolves this.
-        Returns: null
+        // Changing the return type for RPC functions without a return value to `void` resolves this.
+        Returns: void
       },
       delete_business_and_dependents: {
         Args: {
           business_id_to_delete: string
         },
         // FIX: The Supabase client's type inference was failing, causing arguments to be typed as `never`.
-        // Changing the return type for RPC functions without a return value to `null` resolves this.
-        Returns: null
+        // Changing the return type for RPC functions without a return value to `void` resolves this.
+        Returns: void
       },
       handle_no_show: {
         Args: {
@@ -324,8 +324,8 @@ export interface Database {
           p_block_limit: number
         },
         // FIX: The Supabase client's type inference was failing, causing arguments to be typed as `never`.
-        // Changing the return type for RPC functions without a return value to `null` resolves this.
-        Returns: null
+        // Changing the return type for RPC functions without a return value to `void` resolves this.
+        Returns: void
       }
     },
     Enums: {
