@@ -21,5 +21,6 @@ module.exports = {
       }
     }
   },
+  // De 'plugins' array moet leeg zijn voor Tailwind v4
   plugins: [],
 };

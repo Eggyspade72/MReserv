@@ -31,6 +31,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "vite-env.d.ts"],
-  "exclude": ["node_modules", "tailwind.config.js", "postcss.config.js"]
+  "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "vite-env.d.ts", "postcss.config.cjs"],
+  "exclude": ["node_modules", "tailwind.config.js", "postcss.config.cjs"]
 }

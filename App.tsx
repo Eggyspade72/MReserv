@@ -1,27 +1,27 @@
 import React, { useState, useEffect, useCallback, useReducer } from 'react';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
 import { Barber, Appointment, Service, AppConfig, Expense, Business, TopLevelTab, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate, BarberUpdate, Json } from './types';
-import * as api from "@/services/api";
-import BarberSelector from "@/components/BarberSelector";
-import BarberScheduleDisplay from '@/components/BarberScheduleDisplay';
-import BookingFormModal from '@/components/BookingFormModal';
-import BarberLoginModal from '@/components/BarberLoginModal';
-import SuperAdminLoginModal from '@/components/SuperAdminLoginModal';
-import BarberDashboard from '@/components/BarberDashboard';
-import CustomerLookupModal from '@/components/CustomerLookupModal';
-import CustomerAppointmentsModal from '@/components/CustomerAppointmentsModal';
-import SuperAdminPanel from '@/components/SuperAdminPanel';
-import SubscriptionOverdueModal from '@/components/SubscriptionOverdueModal';
-import ContactModal from '@/components/ContactModal';
-import NetworkErrorModal from '@/components/NetworkErrorModal';
-import ReportProblemModal from '@/components/ReportProblemModal';
-import { UserIcon, ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon, SpinnerIcon } from '@/components/Icons';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useConfirmation } from '@/contexts/ConfirmationContext';
-import ThemeToggle from '@/components/ThemeToggle';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
-import AuthMenu from '@/components/AuthMenu';
-import Logo from '@/components/Logo';
+import * as api from "@services/api";
+import BarberSelector from "@components/BarberSelector";
+import BarberScheduleDisplay from '@components/BarberScheduleDisplay';
+import BookingFormModal from '@components/BookingFormModal';
+import BarberLoginModal from '@components/BarberLoginModal';
+import SuperAdminLoginModal from '@components/SuperAdminLoginModal';
+import BarberDashboard from '@components/BarberDashboard';
+import CustomerLookupModal from '@components/CustomerLookupModal';
+import CustomerAppointmentsModal from '@components/CustomerAppointmentsModal';
+import SuperAdminPanel from '@components/SuperAdminPanel';
+import SubscriptionOverdueModal from '@components/SubscriptionOverdueModal';
+import ContactModal from '@components/ContactModal';
+import NetworkErrorModal from '@components/NetworkErrorModal';
+import ReportProblemModal from '@components/ReportProblemModal';
+import { UserIcon, ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon, SpinnerIcon } from '@components/Icons';
+import { useLanguage } from '@contexts/LanguageContext';
+import { useConfirmation } from '@contexts/ConfirmationContext';
+import ThemeToggle from '@components/ThemeToggle';
+import LanguageSwitcher from '@components/LanguageSwitcher';
+import AuthMenu from '@components/AuthMenu';
+import Logo from '@components/Logo';
 import { SUBSCRIPTION_GRACE_PERIOD_DAYS } from './constants';
 import { isBarberEffectivelyClosed } from './utils';
 
@@ -190,7 +190,7 @@ const App: React.FC = () => {
     return () => {
         authListener.subscription.unsubscribe();
     };
-  }, [fetchData]);
+  }, []);
 
   const activeUser = impersonatedBarber || session?.profile;
 
@@ -453,15 +453,15 @@ const App: React.FC = () => {
     setImpersonatedBarber(null);
   };
   
-  if (isLoading || !appConfig) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-900">
-        <SpinnerIcon className="w-16 h-16 text-primary" />
-      </div>
-    );
-  }
-
   const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-900">
+          <SpinnerIcon className="w-16 h-16 text-primary" />
+        </div>
+      );
+    }
+
     if (session?.isOwner && !impersonatedBarber) {
       return (
         <SuperAdminPanel
@@ -469,7 +469,7 @@ const App: React.FC = () => {
           barbers={barbers}
           appointments={appointments}
           expenses={expenses}
-          appConfig={appConfig}
+          appConfig={appConfig!}
           onUpdateBarber={onUpdateBarber}
           onUpdateBusiness={onUpdateBusiness}
           onAddBarber={onAddBarber}
@@ -516,8 +516,8 @@ const App: React.FC = () => {
           onCancelAppointment={handleCancelAppointment}
           onResetMyAppointments={() => { /* Implement if needed */ }}
           showGracePeriodWarning={showGracePeriodWarning}
-          allowBarberLanguageControl={appConfig.allowBarberLanguageControl}
-          appConfig={appConfig}
+          allowBarberLanguageControl={appConfig!.allowBarberLanguageControl}
+          appConfig={appConfig!}
         />
       );
     }
@@ -572,6 +572,15 @@ const App: React.FC = () => {
         );
     }
     
+    // Fallback loading check to prevent crash if appConfig is not yet loaded
+    if (!appConfig) {
+      return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-900">
+          <SpinnerIcon className="w-16 h-16 text-primary" />
+        </div>
+      );
+    }
+
     return <BarberSelector 
               barbers={barbers} 
               businesses={businesses} 
@@ -623,7 +632,7 @@ const App: React.FC = () => {
                <button onClick={() => dispatch({ type: 'OPEN_MODAL', payload: { modal: 'reportProblem' } })} className="hover:text-primary transition-colors">{t('reportProblemButton')}</button>
             </div>
             <p onClick={handleFooterClick} className="cursor-pointer select-none">
-              &copy; {new Date().getFullYear()} {appConfig.appName}. {t('footerRights')}
+              &copy; {new Date().getFullYear()} {appConfig?.appName || 'MReserv'}. {t('footerRights')}
             </p>
         </div>
       </footer>
