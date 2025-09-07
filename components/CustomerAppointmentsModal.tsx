@@ -1,10 +1,6 @@
-
-
-
-
 import React from 'react';
 import { Appointment, Barber } from '../types';
-import { CalendarIcon, ClockIcon, UserCircleIcon, TrashIcon, XCircleIcon, PhoneIcon, HomeIcon } from './Icons';
+import { CalendarIcon, ClockIcon, UserCircleIcon, TrashIcon, XCircleIcon, PhoneIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 

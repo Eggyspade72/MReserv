@@ -1,12 +1,7 @@
-
-
-
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { XCircleIcon, CheckCircleIcon } from './Icons';
-import { Business, Barber, CustomerReport, CustomerReportInsert } from '../types';
+import { Business, Barber, CustomerReportInsert } from '../types';
 
 interface ReportProblemModalProps {
     isOpen: boolean;

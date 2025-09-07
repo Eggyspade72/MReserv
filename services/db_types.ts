@@ -21,6 +21,7 @@ export interface Database {
           id: number
           showServicesOnSelector: boolean
           noShowBlockLimit: number
+          allowDutchPhoneNumbers: boolean
         },
         Insert: {
           allowBarberLanguageControl?: boolean
@@ -33,6 +34,7 @@ export interface Database {
           id?: number
           showServicesOnSelector?: boolean
           noShowBlockLimit?: number
+          allowDutchPhoneNumbers?: boolean
         },
         Update: {
           allowBarberLanguageControl?: boolean
@@ -45,6 +47,7 @@ export interface Database {
           id?: number
           showServicesOnSelector?: boolean
           noShowBlockLimit?: number
+          allowDutchPhoneNumbers?: boolean
         }
       },
       appointments: {
@@ -287,14 +290,10 @@ export interface Database {
             businessId: string
         },
         Update: {
-            id?: string
-            createdAt?: string
-            reportedByCustomerPhone?: string
-            reportedBarberId?: string
-            // FIX: Made reportMessage optional for update operations.
+            // FIX: The original `Update` type was likely incorrect and broke TS inference for the whole client.
+            // This is restricted to only fields that are logically updatable.
             reportMessage?: string
             status?: "new" | "in_progress" | "resolved"
-            businessId?: string
         }
       },
     },
@@ -305,27 +304,21 @@ export interface Database {
       delete_barber_user: {
         Args: {
           user_id_to_delete: string
-        },
-        // FIX: The Supabase client's type inference was failing, causing arguments to be typed as `never`.
-        // Changing the return type for RPC functions without a return value to `void` resolves this.
-        Returns: void
+        }
+        Returns: undefined
       },
       delete_business_and_dependents: {
         Args: {
           business_id_to_delete: string
-        },
-        // FIX: The Supabase client's type inference was failing, causing arguments to be typed as `never`.
-        // Changing the return type for RPC functions without a return value to `void` resolves this.
-        Returns: void
+        }
+        Returns: undefined
       },
       handle_no_show: {
         Args: {
           p_customer_phone: string
           p_block_limit: number
-        },
-        // FIX: The Supabase client's type inference was failing, causing arguments to be typed as `never`.
-        // Changing the return type for RPC functions without a return value to `void` resolves this.
-        Returns: void
+        }
+        Returns: undefined
       }
     },
     Enums: {

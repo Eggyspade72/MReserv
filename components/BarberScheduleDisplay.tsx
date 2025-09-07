@@ -56,7 +56,6 @@ const BarberScheduleDisplay: React.FC<BarberScheduleDisplayProps> = ({
   const displayDateString = displayDate.toISOString().split('T')[0];
   const dayOfWeek = displayDate.getDay();
   const scheduleOverride = barber.scheduleOverrides[displayDateString];
-  // FIX: Corrected property access from daily_location_overrides to dailyLocationOverrides.
   const locationOverride = barber.dailyLocationOverrides?.[displayDateString];
   
   let isWorkingToday: boolean;

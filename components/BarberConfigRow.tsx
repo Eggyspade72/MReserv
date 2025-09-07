@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Barber, Appointment, Service, TimeOff } from '../types';
+import { Barber, Appointment } from '../types';
 import {
-  UserCircleIcon, ClockIcon, SaveIcon, PencilIcon, TrashIcon, EyeIcon, ChevronDownIcon, ChevronUpIcon,
-  KeyIcon, AtSymbolIcon, LinkIcon, PhoneIcon, MapPinIcon, CalendarDaysIcon, HomeIcon, PlusCircleIcon
+  SaveIcon, PencilIcon, TrashIcon, EyeIcon, PlusCircleIcon
 } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
@@ -51,13 +50,15 @@ const BarberConfigRow: React.FC<BarberConfigRowProps> = ({ barber, appointments,
     setEditableBarber(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleServiceChange = (index: number, field: keyof Service, value: string) => {
+  const handleServiceChange = (index: number, field: keyof Barber['services'][0], value: string) => {
     const updatedServices = [...editableBarber.services];
     const serviceToUpdate = { ...updatedServices[index] };
     
     if (field === 'price' || field === 'duration') {
+      // @ts-ignore
       serviceToUpdate[field] = Number(value);
     } else if (field === 'name') {
+      // @ts-ignore
       serviceToUpdate[field] = value;
     }
     

@@ -1,8 +1,5 @@
-
-
-
 import { supabase } from './supabase';
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import { 
     Barber, 
     Appointment, 
@@ -15,7 +12,6 @@ import {
     BusinessUpdate,
     BusinessInsert,
     BarberUpdate,
-    BarberInsert,
     AppointmentInsert,
     AppointmentUpdate,
     AppConfigUpdate,
@@ -103,10 +99,10 @@ export async function updateBusiness(id: string, updates: BusinessUpdate) {
     }
 }
 
-// Replaced client-side cascade with a secure RPC call for robustness.
-// A corresponding function `delete_business_and_dependents` must be created in the Supabase SQL editor.
 export async function removeBusiness(id: string) {
+    // VERVANG de oude, onveilige code met deze ene veilige aanroep
     const { error } = await supabase.rpc('delete_business_and_dependents', { business_id_to_delete: id });
+
     if (error) {
         console.error("Failed to delete the business via RPC:", error);
         throw error;

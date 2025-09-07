@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { TranslationKey, Language } from '../translations';
-import { Barber, Appointment, Expense, AppConfig, Business, ThemeName, TopLevelTab, BlockedCustomer, CustomerReport, ReportStatus, ExpenseInsert, AppConfigUpdate } from '../types';
+import { Barber, Appointment, Expense, AppConfig, Business, ThemeName, TopLevelTab, BlockedCustomer, CustomerReport, ExpenseInsert, AppConfigUpdate } from '../types';
+import type { TranslationKey } from '../translations';
 import * as api from '../services/api';
-import { LogoutIcon, SaveIcon, ShieldCheckIcon, PlusCircleIcon, TrashIcon, MailIcon, ArrowLeftIcon, PencilIcon, BuildingStorefrontIcon, CurrencyEuroIcon, UsersIcon, ChartPieIcon, ChartBarIcon, CogIcon, ExclamationTriangleIcon, PhoneIcon } from './Icons';
+import { SaveIcon, PlusCircleIcon, ArrowLeftIcon, BuildingStorefrontIcon, CurrencyEuroIcon, UsersIcon, ChartPieIcon, ChartBarIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import BarberConfigRow from './BarberConfigRow';
-import BusinessConfigRow from './BusinessConfigRow';
 
 interface SuperAdminPanelProps {
   businesses: Business[];

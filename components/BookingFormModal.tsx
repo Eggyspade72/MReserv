@@ -74,11 +74,18 @@ const BookingFormModal: React.FC<BookingFormModalProps> = ({
         return;
     }
 
-    // This regex is slightly more forgiving for international formats but still basic.
-    // For a production app, a library like 'libphonenumber-js' is recommended.
-    const phoneRegex = /^((\+|00)32\s?|0)4\d{2}\s?\d{2}\s?\d{2}\s?\d{2}$/;
-    if (!phoneRegex.test(phone)) {
-      setError(t('errorInvalidBelgianPhoneNumber'));
+    const cleanedPhone = phone.replace(/[\s.-]/g, '');
+
+    // Regex for Belgian numbers (cleaned)
+    const bePhoneRegex = /^((\+|00)32|0)4\d{8}$/;
+    // Regex for both Belgian (cleaned) and Dutch (cleaned) numbers
+    const beNePhoneRegex = /^((\+|00)316|06)\d{8}$|^((\+|00)324|04)\d{8}$/;
+
+    const allowDutch = appConfig.allowDutchPhoneNumbers;
+    const phoneRegex = allowDutch ? beNePhoneRegex : bePhoneRegex;
+    
+    if (!phoneRegex.test(cleanedPhone)) {
+      setError(allowDutch ? t('errorInvalidBeNePhoneNumber') : t('errorInvalidBelgianPhoneNumber'));
       return;
     }
     

@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useReducer } from 'react';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
-import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business, TopLevelTab, CustomerReport, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate, BarberUpdate, Json, BarberInsert } from './types';
+import { Barber, Appointment, Service, AppConfig, Expense, Business, TopLevelTab, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate, BarberUpdate, Json } from './types';
 import * as api from "@/services/api";
 import BarberSelector from "@/components/BarberSelector";
 import BarberScheduleDisplay from '@/components/BarberScheduleDisplay';
@@ -16,7 +15,7 @@ import SubscriptionOverdueModal from '@/components/SubscriptionOverdueModal';
 import ContactModal from '@/components/ContactModal';
 import NetworkErrorModal from '@/components/NetworkErrorModal';
 import ReportProblemModal from '@/components/ReportProblemModal';
-import { UserIcon, CalendarIcon, CogIcon, ArrowLeftIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PhoneIcon, MapPinIcon, LogoutIcon, HomeIcon, SpinnerIcon, ExclamationTriangleIcon } from '@/components/Icons';
+import { UserIcon, ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon, SpinnerIcon } from '@/components/Icons';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useConfirmation } from '@/contexts/ConfirmationContext';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -31,6 +30,69 @@ type AppSession = {
     profile: Barber | null; // For barbers
     isOwner: boolean;
 } | null;
+
+// --- STATE MANAGEMENT REFACTOR (useReducer) ---
+
+type ModalType = 'booking' | 'barberLogin' | 'superAdminLogin' | 'customerLookup' | 'customerAppointments' | 'contact' | 'reportProblem';
+
+interface AppUIState {
+  activeModal: ModalType | null;
+  modalError: string;
+  bookingSlot: string | null;
+  customerLookupPhone: string;
+  customerAppointments: Appointment[];
+}
+
+const initialUIState: AppUIState = {
+  activeModal: null,
+  modalError: '',
+  bookingSlot: null,
+  customerLookupPhone: '',
+  customerAppointments: [],
+};
+
+type UIAction =
+  | { type: 'OPEN_MODAL'; payload: { modal: ModalType; slotTime?: string } }
+  | { type: 'CLOSE_MODALS' }
+  | { type: 'SET_ERROR'; payload: string }
+  | { type: 'SET_CUSTOMER_VIEW'; payload: { phone: string; appointments: Appointment[] } };
+
+function uiReducer(state: AppUIState, action: UIAction): AppUIState {
+  switch (action.type) {
+    case 'OPEN_MODAL':
+      // Reset transient state when opening a new modal, but persist customer data between lookup and view
+      return {
+        ...initialUIState,
+        customerAppointments: state.customerAppointments,
+        customerLookupPhone: state.customerLookupPhone,
+        activeModal: action.payload.modal,
+        bookingSlot: action.payload.slotTime || null,
+      };
+    case 'CLOSE_MODALS':
+      return {
+        ...state,
+        activeModal: null,
+        modalError: '',
+        bookingSlot: null,
+      };
+    case 'SET_ERROR':
+      return {
+        ...state,
+        modalError: action.payload,
+      };
+    case 'SET_CUSTOMER_VIEW':
+      return {
+        ...state,
+        activeModal: 'customerAppointments',
+        modalError: '',
+        customerLookupPhone: action.payload.phone,
+        customerAppointments: action.payload.appointments,
+      };
+    default:
+      return state;
+  }
+}
+
 
 const App: React.FC = () => {
   const { t, language, setLanguage } = useLanguage();
@@ -51,23 +113,10 @@ const App: React.FC = () => {
   
   const [selectedBarberId, setSelectedBarberId] = useState<string | null>(null);
   const [currentCustomerViewDate, setCurrentCustomerViewDate] = useState<Date>(new Date());
-  
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
-  const [selectedSlotTime, setSelectedSlotTime] = useState<string | null>(null);
-  
-  const [showBarberLoginModal, setShowBarberLoginModal] = useState<boolean>(false);
-  const [showSuperAdminLoginModal, setShowSuperAdminLoginModal] = useState<boolean>(false);
-  const [loginError, setLoginError] = useState<string>('');
 
-  const [showCustomerLookupModal, setShowCustomerLookupModal] = useState<boolean>(false);
-  const [customerLookupPhoneNumber, setCustomerLookupPhoneNumber] = useState<string>('');
-  const [customerAppointments, setCustomerAppointments] = useState<Appointment[]>([]);
-  const [showCustomerAppointmentsModal, setShowCustomerAppointmentsModal] = useState<boolean>(false);
-  const [customerManagementError, setCustomerManagementError] = useState<string>('');
+  // UI state is now managed by the reducer
+  const [uiState, dispatch] = useReducer(uiReducer, initialUIState);
   
-  const [showContactModal, setShowContactModal] = useState<boolean>(false);
-  const [showReportProblemModal, setShowReportProblemModal] = useState<boolean>(false);
-
   const [footerClickCount, setFooterClickCount] = useState(0);
 
   const [bookingType, setBookingType] = useState<'in-shop' | 'on-location'>('in-shop');
@@ -195,16 +244,14 @@ const App: React.FC = () => {
     };
     
   const handleSelectSlot = (slotTime: string) => {
-    setSelectedSlotTime(slotTime);
-    setIsBookingModalOpen(true);
+    dispatch({ type: 'OPEN_MODAL', payload: { modal: 'booking', slotTime } });
   };
   
   const handleBookingSubmit = async (name: string, phone: string, services: Service[], wantsEarlier?: boolean) => {
-    if (!selectedBarberId || !selectedSlotTime || !selectedBusiness) {
+    if (!selectedBarberId || !uiState.bookingSlot || !selectedBusiness) {
         throw new Error("Missing barber, slot, or business info");
     }
 
-    // FIX: Corrected property access from no_show_block_limit to noShowBlockLimit.
     if (appConfig?.noShowBlockLimit) {
       const isBlocked = await api.isCustomerBlocked(phone);
       if (isBlocked) {
@@ -234,7 +281,7 @@ const App: React.FC = () => {
       customerName: name,
       customerPhone: phone,
       date: currentCustomerViewDate.toISOString().split('T')[0],
-      slotTime: selectedSlotTime,
+      slotTime: uiState.bookingSlot,
       services: services as unknown as Json,
       totalPrice,
       totalDuration,
@@ -244,34 +291,32 @@ const App: React.FC = () => {
 
     await api.addAppointment(newAppointment);
     await fetchData();
-    setIsBookingModalOpen(false);
-    setSelectedSlotTime(null);
+    dispatch({ type: 'CLOSE_MODALS' });
   };
   
   const handleLoginAttempt = async (email: string, passwordAttempt: string) => {
-    setLoginError('');
+    dispatch({ type: 'SET_ERROR', payload: '' });
     const { error } = await api.signIn(email, passwordAttempt);
     if (error) {
       if (error.message.includes('rate limit')) {
-        setLoginError(t('errorRateLimitExceeded'));
+        dispatch({ type: 'SET_ERROR', payload: t('errorRateLimitExceeded') });
       } else {
-        setLoginError(t('errorInvalidCredentials'));
+        dispatch({ type: 'SET_ERROR', payload: t('errorInvalidCredentials') });
       }
     } else {
         // Successful login, onAuthStateChange will handle the rest
-        setShowBarberLoginModal(false);
-        setShowSuperAdminLoginModal(false);
+        dispatch({ type: 'CLOSE_MODALS' });
     }
   };
 
   const handleSuperAdminLoginAttempt = async (email: string, passwordAttempt: string) => {
-    setLoginError('');
+    dispatch({ type: 'SET_ERROR', payload: '' });
     const { error } = await api.signIn(email, passwordAttempt);
     if (error) {
-       setLoginError(t('errorInvalidCredentials'));
+       dispatch({ type: 'SET_ERROR', payload: t('errorInvalidCredentials') });
     } else {
       // Logic inside onAuthStateChange will check if user is an owner
-      setShowSuperAdminLoginModal(false);
+      dispatch({ type: 'CLOSE_MODALS' });
     }
   };
 
@@ -284,32 +329,28 @@ const App: React.FC = () => {
   };
 
   const handleCustomerLookup = (phone: string) => {
-      setCustomerManagementError('');
       const foundAppointments = appointments.filter(
           apt => apt.customerPhone === phone && 
                  new Date(apt.date) >= new Date(new Date().setHours(0,0,0,0)) &&
                  apt.status === 'booked'
       );
       if (foundAppointments.length > 0) {
-        setCustomerAppointments(foundAppointments);
-        setCustomerLookupPhoneNumber(phone);
-        setShowCustomerLookupModal(false);
-        setShowCustomerAppointmentsModal(true);
+        dispatch({ type: 'SET_CUSTOMER_VIEW', payload: { phone, appointments: foundAppointments } });
       } else {
-        setCustomerManagementError(t('errorNoAppointmentsFoundForPhone'));
+        dispatch({ type: 'SET_ERROR', payload: t('errorNoAppointmentsFoundForPhone') });
       }
   };
 
   const handleCancelAppointment = async (appointmentId: string) => {
       await api.updateAppointment(appointmentId, { status: 'cancelled' });
       await fetchData(); // Refresh all data
-      // If the customer modal was open, refresh its content or close it
-      if (showCustomerAppointmentsModal) {
-          const updatedAppointments = customerAppointments.filter(apt => apt.id !== appointmentId);
+      
+      if (uiState.activeModal === 'customerAppointments') {
+          const updatedAppointments = uiState.customerAppointments.filter(apt => apt.id !== appointmentId);
           if (updatedAppointments.length > 0) {
-              setCustomerAppointments(updatedAppointments);
+              dispatch({ type: 'SET_CUSTOMER_VIEW', payload: { phone: uiState.customerLookupPhone, appointments: updatedAppointments } });
           } else {
-              setShowCustomerAppointmentsModal(false);
+              dispatch({ type: 'CLOSE_MODALS' });
           }
       }
   };
@@ -379,9 +420,7 @@ const App: React.FC = () => {
   
   const onMarkAsNoShow = async (appointment: Appointment) => {
       await api.updateAppointment(appointment.id, { status: 'no-show' });
-      // FIX: Corrected property access from no_show_block_limit to noShowBlockLimit.
       if (appConfig?.noShowBlockLimit) {
-          // FIX: Corrected property access from no_show_block_limit to noShowBlockLimit.
           await api.handleNoShowCheck(appointment.customerPhone, appConfig.noShowBlockLimit);
       }
       await fetchData();
@@ -389,7 +428,7 @@ const App: React.FC = () => {
   
   const handleSubmitReport = async (report: CustomerReportInsert) => {
     await api.addCustomerReport(report);
-    setShowReportProblemModal(false);
+    dispatch({ type: 'CLOSE_MODALS' });
     // Optionally show a success message
   };
 
@@ -397,7 +436,7 @@ const App: React.FC = () => {
     const newCount = footerClickCount + 1;
     setFooterClickCount(newCount);
     if (newCount >= 5) {
-      setShowSuperAdminLoginModal(true);
+      dispatch({ type: 'OPEN_MODAL', payload: { modal: 'superAdminLogin' } });
       setFooterClickCount(0);
     }
   };
@@ -463,7 +502,6 @@ const App: React.FC = () => {
                 services: services as unknown as Json,
                 blockedSlots: updates.blockedSlots as unknown as Json,
                 scheduleOverrides: updates.scheduleOverrides as unknown as Json,
-                // FIX: Corrected reference from non-existent 'updatedBarber' to 'updates'.
                 timeOff: updates.timeOff as unknown as Json,
                 dailyLocationOverrides: updates.dailyLocationOverrides as unknown as Json
               };
@@ -548,14 +586,13 @@ const App: React.FC = () => {
     <div className={`min-h-screen font-sans antialiased`}>
       <header className="p-4 shadow-md bg-white dark:bg-neutral-800 sticky top-0 z-40">
         <div className="container mx-auto flex justify-between items-center">
-          {/* FIX: Corrected property access from logo_url to logoUrl. */}
           <Logo logoUrl={selectedBusiness?.logoUrl}/>
           <div className="flex items-center gap-2 sm:gap-4">
             <LanguageSwitcher allowedLanguages={selectedBarber?.allowedLanguages || null} />
             <ThemeToggle />
             {showLoginButton && (
                 <button
-                    onClick={() => setShowBarberLoginModal(true)}
+                    onClick={() => dispatch({ type: 'OPEN_MODAL', payload: { modal: 'barberLogin' } })}
                     className="flex items-center gap-1.5 px-3 py-2 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-md transition-colors text-sm font-medium"
                     aria-label={t('loginButton')}
                 >
@@ -581,9 +618,9 @@ const App: React.FC = () => {
       <footer className="bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-sm mt-12">
         <div className="container mx-auto p-6 text-center">
             <div className="flex justify-center items-center gap-6 mb-4">
-               <button onClick={() => setShowCustomerLookupModal(true)} className="hover:text-primary transition-colors">{t('manageMyAppointmentButton')}</button>
-               <button onClick={() => setShowContactModal(true)} className="hover:text-primary transition-colors">{t('footerInterestButton')}</button>
-               <button onClick={() => setShowReportProblemModal(true)} className="hover:text-primary transition-colors">{t('reportProblemButton')}</button>
+               <button onClick={() => dispatch({ type: 'OPEN_MODAL', payload: { modal: 'customerLookup' } })} className="hover:text-primary transition-colors">{t('manageMyAppointmentButton')}</button>
+               <button onClick={() => dispatch({ type: 'OPEN_MODAL', payload: { modal: 'contact' } })} className="hover:text-primary transition-colors">{t('footerInterestButton')}</button>
+               <button onClick={() => dispatch({ type: 'OPEN_MODAL', payload: { modal: 'reportProblem' } })} className="hover:text-primary transition-colors">{t('reportProblemButton')}</button>
             </div>
             <p onClick={handleFooterClick} className="cursor-pointer select-none">
               &copy; {new Date().getFullYear()} {appConfig.appName}. {t('footerRights')}
@@ -594,10 +631,10 @@ const App: React.FC = () => {
       {/* Modals */}
       {selectedBarber && selectedBusiness && appConfig && (
         <BookingFormModal
-          isOpen={isBookingModalOpen}
-          onClose={() => setIsBookingModalOpen(false)}
+          isOpen={uiState.activeModal === 'booking'}
+          onClose={() => dispatch({ type: 'CLOSE_MODALS' })}
           onSubmit={handleBookingSubmit}
-          slotTime={selectedSlotTime || ''}
+          slotTime={uiState.bookingSlot || ''}
           barber={selectedBarber}
           currentDate={currentCustomerViewDate}
           bookingType={bookingType}
@@ -605,14 +642,14 @@ const App: React.FC = () => {
           business={selectedBusiness}
         />
       )}
-      <BarberLoginModal isOpen={showBarberLoginModal} onClose={() => {setShowBarberLoginModal(false); setLoginError('');}} onLoginAttempt={handleLoginAttempt} error={loginError} />
-      <SuperAdminLoginModal isOpen={showSuperAdminLoginModal} onClose={() => {setShowSuperAdminLoginModal(false); setLoginError('');}} onLoginAttempt={handleSuperAdminLoginAttempt} error={loginError} />
-      <CustomerLookupModal isOpen={showCustomerLookupModal} onClose={() => {setShowCustomerLookupModal(false); setCustomerManagementError('');}} onLookup={handleCustomerLookup} error={customerManagementError} />
-      <CustomerAppointmentsModal isOpen={showCustomerAppointmentsModal} onClose={() => setShowCustomerAppointmentsModal(false)} appointments={customerAppointments} barbers={barbers} onCancelAppointment={handleCancelAppointment} customerPhoneNumber={customerLookupPhoneNumber} />
+      <BarberLoginModal isOpen={uiState.activeModal === 'barberLogin'} onClose={() => dispatch({ type: 'CLOSE_MODALS' })} onLoginAttempt={handleLoginAttempt} error={uiState.modalError} />
+      <SuperAdminLoginModal isOpen={uiState.activeModal === 'superAdminLogin'} onClose={() => dispatch({ type: 'CLOSE_MODALS' })} onLoginAttempt={handleSuperAdminLoginAttempt} error={uiState.modalError} />
+      <CustomerLookupModal isOpen={uiState.activeModal === 'customerLookup'} onClose={() => dispatch({ type: 'CLOSE_MODALS' })} onLookup={handleCustomerLookup} error={uiState.modalError} />
+      <CustomerAppointmentsModal isOpen={uiState.activeModal === 'customerAppointments'} onClose={() => dispatch({ type: 'CLOSE_MODALS' })} appointments={uiState.customerAppointments} barbers={barbers} onCancelAppointment={handleCancelAppointment} customerPhoneNumber={uiState.customerLookupPhone} />
       {session?.profile && <SubscriptionOverdueModal isOpen={showOverdueModal} onClose={() => setShowOverdueModal(false)} subscriptionValidUntil={businesses.find(b=>b.id===session.profile?.businessId)?.subscriptionValidUntil || ''} />}
-      <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} contactEmail={appConfig?.contactEmail || undefined} />
+      <ContactModal isOpen={uiState.activeModal === 'contact'} onClose={() => dispatch({ type: 'CLOSE_MODALS' })} contactEmail={appConfig?.contactEmail || undefined} />
       <NetworkErrorModal isOpen={!!networkError} onRetry={() => window.location.reload()} onClose={() => setNetworkError(null)} appUrl={networkError || ''}/>
-      <ReportProblemModal isOpen={showReportProblemModal} onClose={() => setShowReportProblemModal(false)} onSubmit={handleSubmitReport} businesses={businesses} barbers={barbers} />
+      <ReportProblemModal isOpen={uiState.activeModal === 'reportProblem'} onClose={() => dispatch({ type: 'CLOSE_MODALS' })} onSubmit={handleSubmitReport} businesses={businesses} barbers={barbers} />
 
     </div>
   );

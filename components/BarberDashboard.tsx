@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { TranslationKey, Language } from '../translations';
-import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, BlockedSlot } from '../types';
-import { UserCircleIcon, ClockIcon, SaveIcon, PencilIcon, CalendarIcon, PhoneIcon, LogoutIcon, KeyIcon, TrashIcon, MapPinIcon, CalendarDaysIcon, PlusCircleIcon, ChartPieIcon, ChartBarIcon, ChevronDownIcon, ChevronUpIcon, CurrencyEuroIcon, UsersIcon, ExclamationTriangleIcon, GlobeAltIcon, AtSymbolIcon, XCircleIcon } from './Icons';
+import { Barber, Appointment, Service, AppConfig, BlockedSlot } from '../types';
+import { UserCircleIcon, SaveIcon, PencilIcon, CalendarIcon, PhoneIcon, TrashIcon, PlusCircleIcon, ChartPieIcon, ChartBarIcon, CurrencyEuroIcon, UsersIcon, ExclamationTriangleIcon, AtSymbolIcon, LogoutIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import ScheduleCalendar from './ScheduleCalendar';
+import type { Language, TranslationKey } from '../translations';
 
 interface ScheduleData {
   recurringClosedDays: number[];
@@ -242,7 +242,6 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
   const handleDaySettingsSave = (mode: 'default' | 'in-shop-exclusive' | 'on-location-exclusive') => {
       if (!selectedDateForSettings) return;
       const dateStr = selectedDateForSettings.toISOString().split('T')[0];
-      // @ts-ignore
       const newOverrides = { ...(editableBarber.dailyLocationOverrides || {}) };
 
       if (mode === 'default') {
@@ -391,7 +390,6 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
             isOpen={daySettingsModalOpen}
             onClose={() => setDaySettingsModalOpen(false)}
             onSave={handleDaySettingsSave}
-            // @ts-ignore
             currentMode={editableBarber.dailyLocationOverrides?.[selectedDateForSettings?.toISOString().split('T')[0] || ''] || 'default'}
             date={selectedDateForSettings || new Date()}
         />
@@ -597,7 +595,7 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
                                     return (
                                         <div key={`onlocation-${dayIndex}`} className="flex items-center">
                                             <input type="checkbox" id={`onlocation-day-${dayIndex}`} checked={editableBarber.onLocationDays.includes(dayIndex)} onChange={() => handleOnLocationDaysChange(dayIndex)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                                            <label htmlFor={`onlocation-day-${dayIndex}`} className="ms-2 text-sm">{daysMap[dayIndexStr]}</label>
+                                            <label htmlFor={`onlocation-day-${dayIndex}`} className="ms-2 text-sm">{(daysMap as {[key: string]: string})[dayIndexStr]}</label>
                                         </div>
                                     )
                                 })}

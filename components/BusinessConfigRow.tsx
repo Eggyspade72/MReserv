@@ -1,8 +1,6 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Business } from '../types';
-import { BuildingStorefrontIcon, TrashIcon, PencilIcon, SaveIcon, ExclamationTriangleIcon } from './Icons';
+import { BuildingStorefrontIcon, TrashIcon, PencilIcon, SaveIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 
