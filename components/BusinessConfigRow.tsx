@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Business } from '../types';
 import { BuildingStorefrontIcon, TrashIcon, PencilIcon, SaveIcon, ExclamationTriangleIcon } from './Icons';

@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
 import { useLanguage } from '../contexts/LanguageContext';

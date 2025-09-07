@@ -1,14 +1,14 @@
 
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
-import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business, TopLevelTab, CustomerReport, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate, BarberUpdate, Json, BarberInsert } from '@/types';
-import * as api from '@/services/api';
-import BarberSelector from '@/components/BarberSelector';
+import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, Expense, Business, TopLevelTab, CustomerReport, AppointmentInsert, ExpenseInsert, CustomerReportInsert, AppConfigUpdate, BarberUpdate, Json, BarberInsert } from './types';
+import * as api from "@/services/api";
+import BarberSelector from "@/components/BarberSelector";
 import BarberScheduleDisplay from '@/components/BarberScheduleDisplay';
 import BookingFormModal from '@/components/BookingFormModal';
-import LoginModal from '@/components/LoginModal';
+import BarberLoginModal from '@/components/BarberLoginModal';
+import SuperAdminLoginModal from '@/components/SuperAdminLoginModal';
 import BarberDashboard from '@/components/BarberDashboard';
 import CustomerLookupModal from '@/components/CustomerLookupModal';
 import CustomerAppointmentsModal from '@/components/CustomerAppointmentsModal';
@@ -24,8 +24,8 @@ import ThemeToggle from '@/components/ThemeToggle';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import AuthMenu from '@/components/AuthMenu';
 import Logo from '@/components/Logo';
-import { SUBSCRIPTION_GRACE_PERIOD_DAYS } from '@/constants';
-import { isBarberEffectivelyClosed } from '@/utils';
+import { SUBSCRIPTION_GRACE_PERIOD_DAYS } from './constants';
+import { isBarberEffectivelyClosed } from './utils';
 
 type AppSession = {
     auth: SupabaseSession;
@@ -72,7 +72,8 @@ const App: React.FC = () => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
   const [selectedSlotTime, setSelectedSlotTime] = useState<string | null>(null);
   
-  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [showBarberLoginModal, setShowBarberLoginModal] = useState<boolean>(false);
+  const [showSuperAdminLoginModal, setShowSuperAdminLoginModal] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>('');
 
   const [showCustomerLookupModal, setShowCustomerLookupModal] = useState<boolean>(false);
@@ -131,12 +132,10 @@ const App: React.FC = () => {
                     const { data, error } = await api.getBarberProfile(session.user.id);
                     if (error) {
                         // If profile fails, treat as a critical error. Log out and stop.
-                        console.error("Critical: Logged in user has no profile. Logging out.", { userId: session.user.id, error });
+                        console.error("Failed to fetch barber profile, logging out:", error);
                         await api.signOut();
                         setSession(null);
-                        // The auth listener will fire again with a null session. Stop here for this run.
-                        setIsLoading(false);
-                        return;
+                        throw new Error("Profile fetch failed.");
                     }
                     profile = data;
                 }
@@ -149,9 +148,7 @@ const App: React.FC = () => {
             await fetchData();
 
         } catch (error) {
-            // This will catch errors from getAppConfig or fetchData
-            const errorMessage = error instanceof Error ? error.message : "An unknown network error occurred";
-            console.error("Failed during initial data fetch:", errorMessage, { originalError: error });
+            console.error("Initialization error:", error);
             setNetworkError(window.location.origin);
         } finally {
             setIsLoading(false);
@@ -159,620 +156,481 @@ const App: React.FC = () => {
     });
 
     return () => {
-      authListener?.subscription.unsubscribe();
+        authListener.subscription.unsubscribe();
     };
   }, [fetchData]);
 
-  // Handle fading out the static loader
-  useEffect(() => {
-    const loader = document.getElementById('loading-screen');
-    if (loader) {
-      if (!isLoading) {
-        // Add a class to fade it out
-        loader.classList.add('loaded');
-      }
-    }
-  }, [isLoading]);
-
-
-  useEffect(() => {
-    const barber = barbers.find(b => b.id === selectedBarberId);
-    if (barber) {
-      const business = businesses.find(b => b.id === barber.businessId);
-      const theme = business?.theme || 'default';
-      document.documentElement.setAttribute('data-theme', theme);
-      setCurrentCustomerViewDate(new Date());
-      setBookingType(barber.onLocationMode === 'exclusive' ? 'on-location' : 'in-shop');
-    } else {
-      document.documentElement.setAttribute('data-theme', 'default');
-    }
-
-    return () => {
-        document.documentElement.setAttribute('data-theme', 'default');
-    };
-  }, [selectedBarberId, barbers, businesses]);
-    
-  useEffect(() => {
-    if (footerClickCount > 0) {
-      const timer = setTimeout(() => setFooterClickCount(0), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [footerClickCount]);
-
-  useEffect(() => {
-    if (showCustomerAppointmentsModal && customerLookupPhoneNumber) {
-        const foundAppointments = appointments.filter(
-            (apt) => apt.customerPhone === customerLookupPhoneNumber && apt.status === 'booked'
-        ).sort((a,b) => new Date(`${a.date}T${a.slotTime}`).getTime() - new Date(`${b.date}T${b.slotTime}`).getTime());
-        setCustomerAppointments(foundAppointments);
-        
-        if (foundAppointments.length === 0) {
-            setShowCustomerAppointmentsModal(false);
-        }
-    }
-  }, [appointments, showCustomerAppointmentsModal, customerLookupPhoneNumber]);
-
-  useEffect(() => {
-    if (!session?.isOwner && session?.profile) {
-        const barber = session.profile;
-        const business = businesses.find(b => b.id === barber.businessId);
-
-        if(!business) return;
-
-        const now = new Date();
-        let isInGracePeriod = false;
-        const validUntilDate = new Date(business.subscriptionValidUntil);
-        const isExpired = validUntilDate < now;
-    
-        if (isExpired && business.subscriptionStatus !== 'trial') {
-            const gracePeriodEndDate = new Date(new Date(business.subscriptionValidUntil).setDate(validUntilDate.getDate() + SUBSCRIPTION_GRACE_PERIOD_DAYS));
-            if (now > gracePeriodEndDate) return; // Should be handled by login check, but as a safeguard
-            isInGracePeriod = true;
-        }
-    
-        const shouldShowWarning = isInGracePeriod && !business.suppressGracePeriodWarning;
-        setShowGracePeriodWarning(shouldShowWarning);
-        if (shouldShowWarning) {
-            setShowOverdueModal(true);
-        }
-    } else {
-        setShowGracePeriodWarning(false);
-    }
-  }, [session, businesses]);
-
-
-  const handleImpersonateBarber = (barberId: string) => {
-    const barberToImpersonate = barbers.find(b => b.id === barberId);
-    if (barberToImpersonate) {
-      setImpersonatedBarber(barberToImpersonate);
-    }
-  };
-
-  const handleExitImpersonation = () => {
-    setImpersonatedBarber(null);
-  };
-
-  const handleBarberSelect = (barberId: string) => {
-    const barber = barbers.find(b => b.id === barberId);
-    if (!barber) return;
-    const business = businesses.find(b => b.id === barber.businessId);
-
-    if (isBarberEffectivelyClosed(barber, business)) {
-        alert(t('barberNotAcceptingAppointmentsMsg', { name: barber?.name || 'Barber'}));
-        setSelectedBarberId(null);
-        return;
-    }
-    setSelectedBarberId(barberId);
-  };
-
-  const handleGoBackToSelector = () => {
-    setSelectedBarberId(null);
-  };
-
-  const handleOpenBookingModal = (slotTime: string) => {
-    setSelectedSlotTime(slotTime);
-    setIsBookingModalOpen(true);
-  };
-
-  const handleCloseBookingModal = () => {
-    setIsBookingModalOpen(false);
-    setSelectedSlotTime(null);
-  };
-
-  const handleBookSlot = async (customerName: string, customerPhone: string, selectedServices: Service[], wantsEarlier?: boolean) => {
-    if (selectedBarberId && selectedSlotTime && selectedServices.length > 0) {
-      const dateString = currentCustomerViewDate.toISOString().split('T')[0];
-      const selectedBarber = barbers.find(b => b.id === selectedBarberId);
-
-      if (!selectedBarber || !appConfig) return;
-      
-      const isBlocked = await api.isCustomerBlocked(customerPhone);
-      if (isBlocked) {
-        throw new Error('CUSTOMER_BLOCKED');
-      }
-
-      if (appointments.some(apt => apt.customerPhone === customerPhone && apt.date === dateString)) {
-        throw new Error('ALREADY_BOOKED_TODAY');
-      }
-      
-      const { totalPrice, totalDuration } = selectedServices.reduce((acc, s) => ({
-          totalPrice: acc.totalPrice + s.price,
-          totalDuration: acc.totalDuration + s.duration
-      }), { totalPrice: 0, totalDuration: 0 });
-
-      const newAppointment: AppointmentInsert = {
-        barberId: selectedBarberId,
-        businessId: selectedBarber.businessId,
-        date: dateString,
-        slotTime: selectedSlotTime,
-        customerName,
-        customerPhone,
-        services: selectedServices as unknown as Json,
-        totalDuration,
-        totalPrice,
-        status: 'booked',
-        wantsEarlierSlot: wantsEarlier ?? null,
-      };
-      await api.addAppointment(newAppointment);
-      await fetchData();
-      handleCloseBookingModal();
-    }
-  };
-  
-  const handleCancelAppointment = async (appointmentId: string) => {
-     await api.updateAppointment(appointmentId, { status: 'cancelled' });
-     await fetchData();
-  };
-  
-  const handleRemoveAppointmentFromHistory = async (appointmentIdToRemove: string) => {
-    await api.removeAppointment(appointmentIdToRemove);
-    await fetchData();
-  };
-  
-  const handleMarkAsNoShow = async (appointment: Appointment) => {
-    if (!appConfig) return;
-    await api.updateAppointment(appointment.id, { status: 'no-show' });
-    await api.handleNoShowCheck(appointment.customerPhone, appConfig.no_show_block_limit);
-    await fetchData();
-  };
-  
-  const handleLogout = async () => {
-    await api.signOut();
-    setSession(null);
-    setShowGracePeriodWarning(false);
-    setImpersonatedBarber(null);
-    setSelectedBarberId(null);
-    setSelectedBusinessId(null);
-  };
-
-  const handleAddBarber = async (newBarberData: api.SignUpCredentials, businessId: string) => {
-    try {
-        // This single API call creates the auth user and passes the businessId
-        // in the metadata for the backend trigger to use.
-        const { error } = await api.createBarber(newBarberData, businessId);
-
-        if (error) {
-            // Re-throw to be handled by the catch block.
-            throw error;
-        }
-
-        // If successful, the backend trigger has created the profile.
-        // We just need to refresh the data to show the new barber.
-        await fetchData();
-
-    } catch (error) {
-        console.error("Failed to add new barber:", { error });
-        alert(`Error creating barber: ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
-    }
-  };
-
-
-  const handleAddBusiness = async (newBusinessData: Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>) => {
-    await api.addBusiness(newBusinessData);
-    await fetchData();
-  };
-  
-  const handleUpdateBarber = async (updatedBarber: Barber) => {
-    const business = businesses.find(b => b.id === updatedBarber.businessId);
-    await api.updateBarber(updatedBarber.id, updatedBarber as unknown as BarberUpdate);
-    await fetchData();
-    if (isBarberEffectivelyClosed(updatedBarber, business) && selectedBarberId === updatedBarber.id) {
-        setSelectedBarberId(null); 
-        alert(t('barberNowClosedAdminUpdate', {name: updatedBarber.name}));
-    }
-  };
-
-  const handleUpdateBusiness = async (updatedBusiness: Business) => {
-    await api.updateBusiness(updatedBusiness.id, updatedBusiness);
-    await fetchData();
-  };
-
-  const handleRemoveBarber = async (barberIdToRemove: string) => {
-    const { error } = await api.removeBarber(barberIdToRemove);
-    if (error) {
-        console.error("Failed to remove barber:", { error });
-        alert(`Error removing barber: ${error.message}`);
-    } else {
-        await fetchData();
-        if (selectedBarberId === barberIdToRemove) setSelectedBarberId(null);
-        if (session?.profile?.id === barberIdToRemove) setSession(null);
-    }
-  };
-
-  const handleRemoveBusiness = async (businessIdToRemove: string) => {
-      showConfirmation({
-          message: `Are you sure you want to remove this business and all its barbers and appointments? This cannot be undone.`,
-          onConfirm: async () => {
-              await api.removeBusiness(businessIdToRemove);
-              await fetchData();
-          }
-      });
-  };
-  
-  const handleUpdateAppConfig = async (newConfig: AppConfigUpdate) => {
-    await api.updateAppConfig(newConfig);
-    // After updating, we need the full new config object, so we must fetch it again.
-    const updatedConfig = await api.getAppConfig();
-    setAppConfig(updatedConfig);
-  };
-
-  const handleLoginAttempt = async (email: string, passwordAttempt: string) => {
-    setLoginError('');
-    const { data: authResponse, error } = await api.signIn(email, passwordAttempt);
-
-    if (error || !authResponse.session) {
-      console.error("Login attempt failed:", { error });
-      if (error && error.message.toLowerCase().includes('rate limit')) {
-        setLoginError(t('errorRateLimitExceeded'));
-      } else {
-        setLoginError(t('errorInvalidCredentials'));
-      }
-      return;
-    }
-
-    const { session, user } = authResponse;
-    const isOwner = user.app_metadata?.role === 'owner';
-    let profile: Barber | null = null;
-    
-    if (!isOwner) {
-      const { data: profileData, error: profileError } = await api.getBarberProfile(user.id);
-      if (profileError) {
-        console.error("Login successful but failed to fetch profile:", profileError.message, { originalError: profileError });
-        await api.signOut();
-        setLoginError("Failed to load profile.");
-        return;
-      }
-      profile = profileData;
-    }
-
-    setSession({ auth: session, profile, isOwner });
-    setShowLoginModal(false);
-  };
-  
-  const handleUpdateBarberDetailsByBarber = async (details: Partial<Barber>, newServices: Service[], newPassword?: string) => {
-    const currentlyLoggedInUser = impersonatedBarber || (session?.profile);
-    if (!currentlyLoggedInUser) return;
-
-    const barberToUpdate: Barber = { ...currentlyLoggedInUser, ...details, services: newServices };
-    
-    // Update profile data in 'barbers' table
-    await api.updateBarber(currentlyLoggedInUser.id, barberToUpdate as unknown as BarberUpdate);
-    
-    // Update password in 'auth.users' if a new one is provided
-    if(newPassword) {
-        await api.updateUserPassword(newPassword);
-    }
-    
-    const business = businesses.find(b => b.id === barberToUpdate.businessId);
-    await fetchData();
-
-    if (impersonatedBarber) {
-        const updatedImpersonated = (await api.getBarbers()).find(b => b.id === currentlyLoggedInUser.id);
-        setImpersonatedBarber(updatedImpersonated || null);
-    }
-
-    if (isBarberEffectivelyClosed(barberToUpdate, business)) {
-        alert(t('barberNowClosedSelfUpdate'));
-        handleLogout();
-    }
-  };
-
-  const handleCustomerLookup = (phone: string) => {
-    const foundAppointments = appointments.filter(apt => apt.customerPhone === phone && apt.status === 'booked');
-    if (foundAppointments.length > 0) {
-      setCustomerLookupPhoneNumber(phone);
-      setCustomerAppointments(foundAppointments);
-      setShowCustomerLookupModal(false);
-      setShowCustomerAppointmentsModal(true);
-    } else {
-      setCustomerManagementError(t('errorNoAppointmentsFoundForPhone'));
-    }
-  };
-
-  const handleChangeCustomerViewDate = (direction: 'next' | 'prev') => {
-    setCurrentCustomerViewDate(prevDate => {
-      const newDate = new Date(prevDate);
-      newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
-      return newDate;
-    });
-  };
-  
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.setHours(0,0,0,0) === today.setHours(0,0,0,0);
-  };
-
-  const isMaxDate = (date: Date, barber: Barber | null | undefined) => {
-    if (!barber) return true;
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const maxDate = new Date(today);
-    maxDate.setDate(today.getDate() + barber.bookableDaysInAdvance - 1);
-    return date >= maxDate;
-  };
-
-  const handleResetMyAppointmentsBarber = () => {
-    const userToReset = impersonatedBarber || (session?.profile);
-    if (userToReset) {
-        showConfirmation({
-            message: t('confirmResetMyAppointmentsBarber'),
-            onConfirm: async () => {
-                await api.removeAppointmentsForBarber(userToReset.id);
-                await fetchData();
-            }
-        });
-    }
-  };
-  
-  const handleCopyrightClick = () => {
-    if (session?.isOwner) return;
-
-    const newCount = footerClickCount + 1;
-    setFooterClickCount(newCount);
-    if (newCount >= 5) {
-      setShowLoginModal(true);
-      setFooterClickCount(0);
-    }
-  };
-  
-  const handleAddExpense = async (newExpense: ExpenseInsert) => {
-    await api.addExpense(newExpense);
-    await fetchData();
-  };
-
-  const handleRemoveExpense = async (expenseId: string) => {
-    await api.removeExpense(expenseId);
-    await fetchData();
-  };
-
-  const handleAddReport = async (report: CustomerReportInsert) => {
-    await api.addCustomerReport(report);
-    setShowReportProblemModal(false);
-    // Maybe show a success message
-  };
-
-  if (isLoading && !appConfig) {
-      // While the initial critical load is happening, the static loader is shown.
-      // Return null here to prevent rendering anything until loading is complete.
-      return null;
-  }
-
-  // If loading is finished but there's a network error, show the modal.
-  if (networkError) {
-    return (
-        <NetworkErrorModal
-            isOpen={!!networkError}
-            appUrl={networkError}
-            onClose={() => setNetworkError(null)}
-            onRetry={() => window.location.reload()} // A full reload is better for critical errors
-        />
-    )
-  }
-  
-  // With robust error handling, this check is less likely to be hit,
-  // but it's a good safeguard.
-  if (!appConfig) {
-    // This case should now be covered by the NetworkErrorModal,
-    // but we keep it as a fallback.
-    return (
-        <div className="min-h-screen flex items-center justify-center">
-            <p className="text-base text-neutral-700 dark:text-neutral-300">Could not load application configuration.</p>
-        </div>
-    );
-  }
+  const activeUser = impersonatedBarber || session?.profile;
 
   const selectedBarber = barbers.find(b => b.id === selectedBarberId);
   const selectedBusiness = businesses.find(b => b.id === selectedBarber?.businessId);
 
-  const renderMainContent = () => {
-    if (session?.isOwner) {
-        if (impersonatedBarber) {
-             const business = businesses.find(b => b.id === impersonatedBarber.businessId);
-             return <BarberDashboard 
-                barber={impersonatedBarber} allAppointments={appointments.filter(a => a.barberId === impersonatedBarber!.id)}
-                onUpdateDetails={handleUpdateBarberDetailsByBarber}
-                onLogout={handleLogout} onCancelAppointment={handleCancelAppointment}
-                onResetMyAppointments={handleResetMyAppointmentsBarber}
-                onMarkAsNoShow={handleMarkAsNoShow}
-                showGracePeriodWarning={false}
-                allowBarberLanguageControl={appConfig.allowBarberLanguageControl}
-                appConfig={appConfig}
-                 />;
+  useEffect(() => {
+    if (activeUser) {
+      const userLang = activeUser.preferredLanguage;
+      if (userLang && ['en', 'nl', 'fr', 'es', 'ar'].includes(userLang)) {
+        setLanguage(userLang as any);
+      }
+    }
+  }, [activeUser, setLanguage]);
+
+  useEffect(() => {
+    if (selectedBusiness) {
+        document.documentElement.setAttribute('data-theme', selectedBusiness.theme || 'default');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'default');
+    }
+  }, [selectedBusiness]);
+
+  useEffect(() => {
+    if (session?.profile && !session.isOwner) {
+      const business = businesses.find(b => b.id === session.profile?.businessId);
+      if (business?.subscriptionStatus === 'past_due' && !business.suppressGracePeriodWarning) {
+        setShowGracePeriodWarning(true);
+        
+        const validUntil = new Date(business.subscriptionValidUntil);
+        const gracePeriodEndDate = new Date(validUntil.setDate(validUntil.getDate() + SUBSCRIPTION_GRACE_PERIOD_DAYS));
+        if (new Date() > gracePeriodEndDate) {
+            setShowOverdueModal(true);
         }
-        return <SuperAdminPanel 
-                    businesses={businesses}
-                    barbers={barbers}
-                    appointments={appointments}
-                    expenses={expenses}
-                    appConfig={appConfig}
-                    onUpdateBarber={handleUpdateBarber}
-                    onUpdateBusiness={handleUpdateBusiness}
-                    onAddBarber={handleAddBarber}
-                    onRemoveBarber={handleRemoveBarber}
-                    onAddBusiness={handleAddBusiness}
-                    onRemoveBusiness={handleRemoveBusiness}
-                    onAddExpense={handleAddExpense}
-                    onRemoveExpense={handleRemoveExpense}
-                    onLogout={handleLogout}
-                    onUpdateAppConfig={handleUpdateAppConfig}
-                    onImpersonateBarber={handleImpersonateBarber}
-                    onDataRefresh={fetchData}
-                    selectedBusinessId={selectedBusinessId}
-                    onSelectBusinessId={setSelectedBusinessId}
-                    activeTopLevelTab={activeTopLevelTab}
-                    onSetTopLevelTab={setActiveTopLevelTab}
-                />
+      } else {
+        setShowGracePeriodWarning(false);
+        setShowOverdueModal(false);
+      }
+    } else {
+        setShowGracePeriodWarning(false);
+        setShowOverdueModal(false);
     }
-    if (session?.profile) {
-        return <BarberDashboard 
-                barber={session.profile} allAppointments={appointments.filter(a => a.barberId === session.profile!.id)}
-                onUpdateDetails={handleUpdateBarberDetailsByBarber}
-                onLogout={handleLogout} onCancelAppointment={handleCancelAppointment}
-                onResetMyAppointments={handleResetMyAppointmentsBarber}
-                onMarkAsNoShow={handleMarkAsNoShow}
-                showGracePeriodWarning={showGracePeriodWarning}
-                allowBarberLanguageControl={appConfig.allowBarberLanguageControl}
-                appConfig={appConfig}
-                 />;
+  }, [session, businesses]);
+  
+   const handleDayChange = (amount: number) => {
+        setCurrentCustomerViewDate(prev => {
+            const newDate = new Date(prev);
+            newDate.setDate(newDate.getDate() + amount);
+            return newDate;
+        });
+    };
+    
+  const handleSelectSlot = (slotTime: string) => {
+    setSelectedSlotTime(slotTime);
+    setIsBookingModalOpen(true);
+  };
+  
+  const handleBookingSubmit = async (name: string, phone: string, services: Service[], wantsEarlier?: boolean) => {
+    if (!selectedBarberId || !selectedSlotTime || !selectedBusiness) {
+        throw new Error("Missing barber, slot, or business info");
     }
-    if (selectedBarber) {
-      const business = businesses.find(b => b.id === selectedBarber.businessId);
 
-      return (
-        <>
-          <button onClick={handleGoBackToSelector} className="mb-6 flex items-center text-primary hover:text-blue-500"><ArrowLeftIcon className="w-5 h-5 me-2" />{t('backToBarberSelection')}</button>
-          <div className="flex flex-col sm:flex-row items-start mb-6">
-            {selectedBarber.avatarUrl && <img src={selectedBarber.avatarUrl} alt={selectedBarber.name} className="w-20 h-20 rounded-full me-6 mb-3 sm:mb-0 border-2 border-primary object-cover"/>}
-            <div>
-              <h2 className="text-3xl font-semibold">{selectedBarber.name}</h2>
-              <p className="text-neutral-500"><CalendarIcon className="w-4 h-4 me-1 inline"/> {t('appointmentsForDate', { date: currentCustomerViewDate.toLocaleDateString(language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) })}</p>
-              {selectedBarber.phoneNumber && <p className="text-sm text-neutral-500"><PhoneIcon className="w-4 h-4 me-2 inline"/> {selectedBarber.phoneNumber}</p>}
-              {business?.address && <p className="text-sm text-neutral-500"><MapPinIcon className="w-4 h-4 me-2 inline"/> {business.address}</p>}
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-center my-4">
-              <button onClick={() => handleChangeCustomerViewDate('prev')} disabled={isToday(currentCustomerViewDate)} className="px-3 py-2 bg-neutral-200 dark:bg-neutral-700 rounded-md disabled:opacity-50 flex items-center text-sm"><ChevronLeftIcon className="w-5 h-5 me-1" /> {t('previousDayButton')}</button>
-              <span className="font-medium">{currentCustomerViewDate.toLocaleDateString(language, { weekday: 'short', month: 'long', day: 'numeric' })}</span>
-              <button onClick={() => handleChangeCustomerViewDate('next')} disabled={isMaxDate(currentCustomerViewDate, selectedBarber)} className="px-3 py-2 bg-neutral-200 dark:bg-neutral-700 rounded-md disabled:opacity-50 flex items-center text-sm">{t('nextDayButton')} <ChevronRightIcon className="w-5 h-5 ms-1" /></button>
-          </div>
-
-          <BarberScheduleDisplay
-            barber={selectedBarber}
-            appointments={appointments.filter(apt => apt.barberId === selectedBarberId && apt.date === currentCustomerViewDate.toISOString().split('T')[0] && apt.status === 'booked')}
-            displayDate={currentCustomerViewDate}
-            onSelectSlot={handleOpenBookingModal}
-            bookingType={bookingType}
-            onBookingTypeChange={setBookingType}
-            appConfig={appConfig}
-          />
-        </>
-      );
+    // FIX: Corrected property access from no_show_block_limit to noShowBlockLimit.
+    if (appConfig?.noShowBlockLimit) {
+      const isBlocked = await api.isCustomerBlocked(phone);
+      if (isBlocked) {
+        throw new Error('CUSTOMER_BLOCKED');
+      }
     }
-    return (
-      <>
-        <h2 className="text-3xl font-semibold text-center mb-6 flex items-center justify-center"><UserIcon className="w-8 h-8 me-3 text-primary"/>{t('selectYourBarber')}</h2>
-        <BarberSelector 
-            barbers={barbers.filter(b => businesses.find(biz => biz.id === b.businessId)?.subscriptionStatus !== 'cancelled')} 
-            businesses={businesses}
-            onSelectBarber={handleBarberSelect} 
-            showServicesOnSelector={appConfig.showServicesOnSelector}
-        />
-      </>
+
+    const todayString = new Date().toISOString().split('T')[0];
+    const hasBookingToday = appointments.some(apt => 
+        apt.customerPhone === phone && 
+        apt.date === todayString &&
+        apt.status === 'booked'
     );
+    if(hasBookingToday) {
+        throw new Error('ALREADY_BOOKED_TODAY');
+    }
+
+    const { totalPrice, totalDuration } = services.reduce((acc, service) => {
+        acc.totalPrice += service.price;
+        acc.totalDuration += service.duration;
+        return acc;
+    }, { totalPrice: 0, totalDuration: 0 });
+
+    const newAppointment: AppointmentInsert = {
+      barberId: selectedBarberId,
+      businessId: selectedBusiness.id,
+      customerName: name,
+      customerPhone: phone,
+      date: currentCustomerViewDate.toISOString().split('T')[0],
+      slotTime: selectedSlotTime,
+      services: services as unknown as Json,
+      totalPrice,
+      totalDuration,
+      wantsEarlierSlot: wantsEarlier || false,
+      status: 'booked'
+    };
+
+    await api.addAppointment(newAppointment);
+    await fetchData();
+    setIsBookingModalOpen(false);
+    setSelectedSlotTime(null);
+  };
+  
+  const handleLoginAttempt = async (email: string, passwordAttempt: string) => {
+    setLoginError('');
+    const { error } = await api.signIn(email, passwordAttempt);
+    if (error) {
+      if (error.message.includes('rate limit')) {
+        setLoginError(t('errorRateLimitExceeded'));
+      } else {
+        setLoginError(t('errorInvalidCredentials'));
+      }
+    } else {
+        // Successful login, onAuthStateChange will handle the rest
+        setShowBarberLoginModal(false);
+        setShowSuperAdminLoginModal(false);
+    }
   };
 
-  const hasCustomLogo = !!selectedBusiness?.logo_url;
+  const handleSuperAdminLoginAttempt = async (email: string, passwordAttempt: string) => {
+    setLoginError('');
+    const { error } = await api.signIn(email, passwordAttempt);
+    if (error) {
+       setLoginError(t('errorInvalidCredentials'));
+    } else {
+      // Logic inside onAuthStateChange will check if user is an owner
+      setShowSuperAdminLoginModal(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await api.signOut();
+    setSelectedBarberId(null);
+    setImpersonatedBarber(null);
+    setSession(null);
+    // Let onAuthStateChange handle data refresh and state updates.
+  };
+
+  const handleCustomerLookup = (phone: string) => {
+      setCustomerManagementError('');
+      const foundAppointments = appointments.filter(
+          apt => apt.customerPhone === phone && 
+                 new Date(apt.date) >= new Date(new Date().setHours(0,0,0,0)) &&
+                 apt.status === 'booked'
+      );
+      if (foundAppointments.length > 0) {
+        setCustomerAppointments(foundAppointments);
+        setCustomerLookupPhoneNumber(phone);
+        setShowCustomerLookupModal(false);
+        setShowCustomerAppointmentsModal(true);
+      } else {
+        setCustomerManagementError(t('errorNoAppointmentsFoundForPhone'));
+      }
+  };
+
+  const handleCancelAppointment = async (appointmentId: string) => {
+      await api.updateAppointment(appointmentId, { status: 'cancelled' });
+      await fetchData(); // Refresh all data
+      // If the customer modal was open, refresh its content or close it
+      if (showCustomerAppointmentsModal) {
+          const updatedAppointments = customerAppointments.filter(apt => apt.id !== appointmentId);
+          if (updatedAppointments.length > 0) {
+              setCustomerAppointments(updatedAppointments);
+          } else {
+              setShowCustomerAppointmentsModal(false);
+          }
+      }
+  };
+  
+  // Handlers for Super Admin and Barber Dashboard actions
+  const onUpdateBarber = async (updatedBarber: Barber) => {
+      const { id, ...updates } = updatedBarber;
+      const updatePayload: BarberUpdate = {
+        ...updates,
+        services: updatedBarber.services as unknown as Json,
+        blockedSlots: updatedBarber.blockedSlots as unknown as Json,
+        scheduleOverrides: updatedBarber.scheduleOverrides as unknown as Json,
+        timeOff: updatedBarber.timeOff as unknown as Json,
+        dailyLocationOverrides: updatedBarber.dailyLocationOverrides as unknown as Json
+      };
+
+      await api.updateBarber(id, updatePayload);
+      await fetchData();
+  };
+  
+  const onUpdateBusiness = async (updatedBusiness: Business) => {
+      const { id, ...updates } = updatedBusiness;
+      await api.updateBusiness(id, updates);
+      await fetchData();
+  };
+
+  const onAddBarber = async (newBarber: api.SignUpCredentials, businessId: string) => {
+      await api.createBarber(newBarber, businessId);
+      await fetchData();
+  };
+  
+  const onRemoveBarber = async (barberId: string) => {
+      await api.removeBarber(barberId);
+      await fetchData();
+  };
+  
+  const onAddBusiness = async (newBusiness: Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>) => {
+      await api.addBusiness(newBusiness);
+      await fetchData();
+  };
+  
+  const onRemoveBusiness = async (businessId: string) => {
+      showConfirmation({
+        message: t('confirmRemoveBusiness'),
+        onConfirm: async () => {
+          await api.removeBusiness(businessId);
+          await fetchData();
+        }
+      });
+  };
+  
+  const onAddExpense = async (newExpense: ExpenseInsert) => {
+      await api.addExpense(newExpense);
+      await fetchData();
+  };
+  
+  const onRemoveExpense = async (expenseId: string) => {
+      await api.removeExpense(expenseId);
+      await fetchData();
+  };
+  
+  const onUpdateAppConfig = async (newConfig: AppConfigUpdate) => {
+      await api.updateAppConfig(newConfig);
+      const configData = await api.getAppConfig();
+      setAppConfig(configData);
+  };
+  
+  const onMarkAsNoShow = async (appointment: Appointment) => {
+      await api.updateAppointment(appointment.id, { status: 'no-show' });
+      // FIX: Corrected property access from no_show_block_limit to noShowBlockLimit.
+      if (appConfig?.noShowBlockLimit) {
+          // FIX: Corrected property access from no_show_block_limit to noShowBlockLimit.
+          await api.handleNoShowCheck(appointment.customerPhone, appConfig.noShowBlockLimit);
+      }
+      await fetchData();
+  };
+  
+  const handleSubmitReport = async (report: CustomerReportInsert) => {
+    await api.addCustomerReport(report);
+    setShowReportProblemModal(false);
+    // Optionally show a success message
+  };
+
+  const handleFooterClick = () => {
+    const newCount = footerClickCount + 1;
+    setFooterClickCount(newCount);
+    if (newCount >= 5) {
+      setShowSuperAdminLoginModal(true);
+      setFooterClickCount(0);
+    }
+  };
+  
+  const handleImpersonateBarber = (barberId: string) => {
+    const barberToImpersonate = barbers.find(b => b.id === barberId);
+    if (barberToImpersonate) {
+        setImpersonatedBarber(barberToImpersonate);
+        setSelectedBarberId(null);
+    }
+  };
+
+  const exitImpersonation = () => {
+    setImpersonatedBarber(null);
+  };
+  
+  if (isLoading || !appConfig) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-900">
+        <SpinnerIcon className="w-16 h-16 text-primary" />
+      </div>
+    );
+  }
+
+  const renderContent = () => {
+    if (session?.isOwner && !impersonatedBarber) {
+      return (
+        <SuperAdminPanel
+          businesses={businesses}
+          barbers={barbers}
+          appointments={appointments}
+          expenses={expenses}
+          appConfig={appConfig}
+          onUpdateBarber={onUpdateBarber}
+          onUpdateBusiness={onUpdateBusiness}
+          onAddBarber={onAddBarber}
+          onRemoveBarber={onRemoveBarber}
+          onAddBusiness={onAddBusiness}
+          onRemoveBusiness={onRemoveBusiness}
+          onAddExpense={onAddExpense}
+          onRemoveExpense={onRemoveExpense}
+          onLogout={handleLogout}
+          onUpdateAppConfig={onUpdateAppConfig}
+          onImpersonateBarber={handleImpersonateBarber}
+          onDataRefresh={fetchData}
+          selectedBusinessId={selectedBusinessId}
+          onSelectBusinessId={setSelectedBusinessId}
+          activeTopLevelTab={activeTopLevelTab}
+          onSetTopLevelTab={setActiveTopLevelTab}
+        />
+      );
+    }
+
+    if (activeUser) {
+      return (
+        <BarberDashboard
+          barber={activeUser}
+          allAppointments={appointments.filter(a => a.barberId === activeUser.id)}
+          onUpdateDetails={async (details, services, newPassword) => {
+              const { id, ...updates } = { ...activeUser, ...details, services };
+              const updatePayload: BarberUpdate = {
+                ...updates,
+                services: services as unknown as Json,
+                blockedSlots: updates.blockedSlots as unknown as Json,
+                scheduleOverrides: updates.scheduleOverrides as unknown as Json,
+                // FIX: Corrected reference from non-existent 'updatedBarber' to 'updates'.
+                timeOff: updates.timeOff as unknown as Json,
+                dailyLocationOverrides: updates.dailyLocationOverrides as unknown as Json
+              };
+              await api.updateBarber(id, updatePayload);
+              if (newPassword) {
+                  await api.updateUserPassword(newPassword);
+              }
+              await fetchData();
+          }}
+          onMarkAsNoShow={onMarkAsNoShow}
+          onLogout={handleLogout}
+          onCancelAppointment={handleCancelAppointment}
+          onResetMyAppointments={() => { /* Implement if needed */ }}
+          showGracePeriodWarning={showGracePeriodWarning}
+          allowBarberLanguageControl={appConfig.allowBarberLanguageControl}
+          appConfig={appConfig}
+        />
+      );
+    }
+
+    if (selectedBarber && selectedBusiness && appConfig) {
+        const appointmentsForBarberOnDate = appointments.filter(a => 
+            a.barberId === selectedBarberId && a.date === currentCustomerViewDate.toISOString().split('T')[0]
+        );
+        return (
+            <div>
+                <button
+                    onClick={() => setSelectedBarberId(null)}
+                    className="mb-6 flex items-center text-sm font-medium text-primary hover:text-blue-500"
+                >
+                    <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                    {t('backToBarberSelection')}
+                </button>
+                 <div className="flex flex-col sm:flex-row items-center justify-center text-center mb-8 gap-4 sm:gap-8">
+                    {selectedBarber.avatarUrl ? (
+                      <img src={selectedBarber.avatarUrl} alt={selectedBarber.name} className="w-28 h-28 rounded-full border-4 border-secondary object-cover shadow-lg" />
+                    ) : (
+                       <div className="w-28 h-28 rounded-full border-4 border-secondary bg-neutral-200 dark:bg-neutral-600 flex items-center justify-center shadow-lg">
+                           <span className="text-4xl text-neutral-500 dark:text-neutral-400">{selectedBarber.name.charAt(0)}</span>
+                       </div>
+                    )}
+                    <div>
+                        <h2 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">{selectedBarber.name}</h2>
+                        {selectedBusiness.address && <p className="text-neutral-600 dark:text-neutral-400 mt-1 flex items-center justify-center gap-1.5"><MapPinIcon className="w-4 h-4"/>{selectedBusiness.address}</p>}
+                    </div>
+                </div>
+                <div className="flex justify-between items-center mb-6">
+                    <button onClick={() => handleDayChange(-1)} className="p-2 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700">
+                        <ChevronLeftIcon className="w-6 h-6" />
+                    </button>
+                    <h3 className="text-lg font-semibold text-center whitespace-nowrap">
+                        {t('appointmentsForDate', { date: currentCustomerViewDate.toLocaleDateString(language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) })}
+                    </h3>
+                    <button onClick={() => handleDayChange(1)} className="p-2 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700">
+                        <ChevronRightIcon className="w-6 h-6" />
+                    </button>
+                </div>
+                <BarberScheduleDisplay
+                    barber={selectedBarber}
+                    appointments={appointmentsForBarberOnDate}
+                    displayDate={currentCustomerViewDate}
+                    onSelectSlot={handleSelectSlot}
+                    bookingType={bookingType}
+                    onBookingTypeChange={setBookingType}
+                    appConfig={appConfig}
+                />
+            </div>
+        );
+    }
+    
+    return <BarberSelector 
+              barbers={barbers} 
+              businesses={businesses} 
+              onSelectBarber={setSelectedBarberId} 
+              showServicesOnSelector={appConfig.showServicesOnSelector}
+           />;
+  };
+  
+  const showLoginButton = !session && !impersonatedBarber;
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-4 md:p-8">
-       <header className="w-full max-w-6xl mb-4 z-20">
-            <div className="relative flex justify-center items-center text-center py-4">
-                <div className="absolute top-1/2 start-0 -translate-y-1/2">
-                    <Logo logoUrl={selectedBusiness?.logo_url} />
-                </div>
-                <div className="flex-1">
-                    <p className="text-neutral-600 dark:text-neutral-300 text-lg hidden md:block">{t('appTagline')}</p>
-                </div>
-                <div className="absolute top-1/2 end-0 -translate-y-1/2 flex items-center gap-2 sm:gap-3">
-                    <LanguageSwitcher allowedLanguages={selectedBarber?.allowedLanguages} />
-                    <ThemeToggle />
-                    <AuthMenu session={session} onLogout={handleLogout} onLoginClick={() => setShowLoginModal(true)} />
-                </div>
+    <div className={`min-h-screen font-sans antialiased`}>
+      <header className="p-4 shadow-md bg-white dark:bg-neutral-800 sticky top-0 z-40">
+        <div className="container mx-auto flex justify-between items-center">
+          {/* FIX: Corrected property access from logo_url to logoUrl. */}
+          <Logo logoUrl={selectedBusiness?.logoUrl}/>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <LanguageSwitcher allowedLanguages={selectedBarber?.allowedLanguages || null} />
+            <ThemeToggle />
+            {showLoginButton && (
+                <button
+                    onClick={() => setShowBarberLoginModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded-md transition-colors text-sm font-medium"
+                    aria-label={t('loginButton')}
+                >
+                    <UserIcon className="w-5 h-5" />
+                    <span className="hidden sm:inline">{t('barberLoginTitle')}</span>
+                </button>
+            )}
+            {session && <AuthMenu session={session} onLogout={handleLogout} onLoginClick={() => {}} />}
+          </div>
+        </div>
+        {impersonatedBarber && (
+             <div className="absolute inset-x-0 bottom-0 translate-y-full bg-red-600 text-white text-xs text-center py-1.5 px-4 flex justify-between items-center">
+                <span>{t('impersonationBannerText', {name: impersonatedBarber.name})}</span>
+                <button onClick={exitImpersonation} className="font-bold underline">{t('impersonationExitButton')}</button>
             </div>
-        </header>
+        )}
+      </header>
       
-      {!session && !selectedBarberId && (
-        <div className="w-full max-w-6xl mb-6 text-center">
-          <button type="button" onClick={() => setShowCustomerLookupModal(true)} className="px-6 py-3 bg-primary hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md flex items-center justify-center mx-auto text-base">
-            <SearchIcon className="w-5 h-5 me-2" />{t('manageMyAppointmentButton')}
-          </button>
-        </div>
-      )}
-
-      {impersonatedBarber && (
-        <div className="w-full max-w-6xl mb-4 p-3 bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 rounded-lg flex justify-between items-center shadow-md">
-            <p className="text-sm font-medium">{t('impersonationBannerText', { name: impersonatedBarber.name })}</p>
-            <button onClick={handleExitImpersonation} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-md flex items-center">
-              <LogoutIcon className="w-4 h-4 me-1.5"/>
-              {t('impersonationExitButton')}
-            </button>
-        </div>
-      )}
-      
-      <main className="w-full max-w-6xl bg-white dark:bg-neutral-800 shadow-2xl rounded-xl p-6 md:p-8">
-        {renderMainContent()}
+      <main className="container mx-auto p-4 md:p-8">
+        {renderContent()}
       </main>
 
-      {selectedBarber && selectedSlotTime && appConfig && selectedBusiness && (
+      <footer className="bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-sm mt-12">
+        <div className="container mx-auto p-6 text-center">
+            <div className="flex justify-center items-center gap-6 mb-4">
+               <button onClick={() => setShowCustomerLookupModal(true)} className="hover:text-primary transition-colors">{t('manageMyAppointmentButton')}</button>
+               <button onClick={() => setShowContactModal(true)} className="hover:text-primary transition-colors">{t('footerInterestButton')}</button>
+               <button onClick={() => setShowReportProblemModal(true)} className="hover:text-primary transition-colors">{t('reportProblemButton')}</button>
+            </div>
+            <p onClick={handleFooterClick} className="cursor-pointer select-none">
+              &copy; {new Date().getFullYear()} {appConfig.appName}. {t('footerRights')}
+            </p>
+        </div>
+      </footer>
+      
+      {/* Modals */}
+      {selectedBarber && selectedBusiness && appConfig && (
         <BookingFormModal
-          isOpen={isBookingModalOpen} onClose={handleCloseBookingModal}
-          onSubmit={handleBookSlot} slotTime={selectedSlotTime}
-          barber={selectedBarber} currentDate={currentCustomerViewDate}
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          onSubmit={handleBookingSubmit}
+          slotTime={selectedSlotTime || ''}
+          barber={selectedBarber}
+          currentDate={currentCustomerViewDate}
           bookingType={bookingType}
           appConfig={appConfig}
           business={selectedBusiness}
         />
       )}
-      
-      <LoginModal isOpen={showLoginModal} onClose={() => { setShowLoginModal(false); setLoginError(''); }} onLoginAttempt={handleLoginAttempt} error={loginError} />
-      <CustomerLookupModal isOpen={showCustomerLookupModal} onClose={() => setShowCustomerLookupModal(false)} onLookup={handleCustomerLookup} error={customerManagementError} />
+      <BarberLoginModal isOpen={showBarberLoginModal} onClose={() => {setShowBarberLoginModal(false); setLoginError('');}} onLoginAttempt={handleLoginAttempt} error={loginError} />
+      <SuperAdminLoginModal isOpen={showSuperAdminLoginModal} onClose={() => {setShowSuperAdminLoginModal(false); setLoginError('');}} onLoginAttempt={handleSuperAdminLoginAttempt} error={loginError} />
+      <CustomerLookupModal isOpen={showCustomerLookupModal} onClose={() => {setShowCustomerLookupModal(false); setCustomerManagementError('');}} onLookup={handleCustomerLookup} error={customerManagementError} />
       <CustomerAppointmentsModal isOpen={showCustomerAppointmentsModal} onClose={() => setShowCustomerAppointmentsModal(false)} appointments={customerAppointments} barbers={barbers} onCancelAppointment={handleCancelAppointment} customerPhoneNumber={customerLookupPhoneNumber} />
-      <SubscriptionOverdueModal isOpen={showOverdueModal} onClose={() => setShowOverdueModal(false)} subscriptionValidUntil={session?.profile ? (businesses.find(b => b.id === session.profile?.businessId)?.subscriptionValidUntil || '') : ''} />
+      {session?.profile && <SubscriptionOverdueModal isOpen={showOverdueModal} onClose={() => setShowOverdueModal(false)} subscriptionValidUntil={businesses.find(b=>b.id===session.profile?.businessId)?.subscriptionValidUntil || ''} />}
       <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} contactEmail={appConfig?.contactEmail || undefined} />
-      <ReportProblemModal isOpen={showReportProblemModal} onClose={() => setShowReportProblemModal(false)} onSubmit={handleAddReport} businesses={businesses} barbers={barbers} />
-      
+      <NetworkErrorModal isOpen={!!networkError} onRetry={() => window.location.reload()} onClose={() => setNetworkError(null)} appUrl={networkError || ''}/>
+      <ReportProblemModal isOpen={showReportProblemModal} onClose={() => setShowReportProblemModal(false)} onSubmit={handleSubmitReport} businesses={businesses} barbers={barbers} />
 
-      <footer className="mt-12 text-center text-neutral-600 dark:text-neutral-400 text-sm w-full max-w-6xl">
-        <p>
-            <span onClick={handleCopyrightClick} className="cursor-pointer" title="Super Admin Access Trigger">&copy;</span>
-            {' '}{new Date().getFullYear()} {appConfig?.appName || 'MReserv'}. {t('footerRights')}
-        </p>
-        {!hasCustomLogo && <p className="mb-4">{t('footerTagline')}</p>}
-        {!session && (
-            <div className="flex justify-center items-center my-4">
-                <button onClick={() => setShowContactModal(true)} className="px-6 py-3 bg-secondary hover:bg-emerald-600 text-white font-semibold rounded-lg shadow-md transition duration-150 flex items-center text-base">
-                    {t('footerInterestButton')}
-                </button>
-            </div>
-        )}
-        <div className="flex justify-center items-center gap-2 mt-4">
-           {hasCustomLogo ? (
-                <>
-                 <p className="text-xs">{t('poweredBy', { name: '' })}</p>
-                 <Logo useTextLogo={true} />
-                </>
-            ) : (
-                 <p className="text-xs">{t('poweredBy', { name: appConfig?.appName || 'MReserv' })}</p>
-            )}
-        </div>
-        {!session && (
-          <button onClick={() => setShowReportProblemModal(true)} className="text-xs text-neutral-500 hover:text-primary mt-4 flex items-center justify-center mx-auto">
-            <ExclamationTriangleIcon className="w-3 h-3 me-1" />
-            {t('reportProblemButton')}
-          </button>
-        )}
-      </footer>
     </div>
   );
 };

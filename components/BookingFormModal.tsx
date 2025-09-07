@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { CalendarIcon, ClockIcon, UserCircleIcon, PhoneIcon, CheckCircleIcon, XCircleIcon, HomeIcon, MapPinIcon, ExclamationTriangleIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -75,9 +74,10 @@ const BookingFormModal: React.FC<BookingFormModalProps> = ({
         return;
     }
 
-    const cleanedPhone = phone.replace(/[\s.-]/g, '');
-    const belgianPhoneRegex = /^((\+32|0032)4|04)\d{8}$/;
-    if (!belgianPhoneRegex.test(cleanedPhone)) {
+    // This regex is slightly more forgiving for international formats but still basic.
+    // For a production app, a library like 'libphonenumber-js' is recommended.
+    const phoneRegex = /^((\+|00)32\s?|0)4\d{2}\s?\d{2}\s?\d{2}\s?\d{2}$/;
+    if (!phoneRegex.test(phone)) {
       setError(t('errorInvalidBelgianPhoneNumber'));
       return;
     }

@@ -1,8 +1,6 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import type { TranslationKey, Language } from '../translations';
-import { Barber, Appointment, Expense, AppConfig, Business, ThemeName, TopLevelTab, BlockedCustomer, CustomerReport, ReportStatus, ExpenseInsert } from '../types';
+import { Barber, Appointment, Expense, AppConfig, Business, ThemeName, TopLevelTab, BlockedCustomer, CustomerReport, ReportStatus, ExpenseInsert, AppConfigUpdate } from '../types';
 import * as api from '../services/api';
 import { LogoutIcon, SaveIcon, ShieldCheckIcon, PlusCircleIcon, TrashIcon, MailIcon, ArrowLeftIcon, PencilIcon, BuildingStorefrontIcon, CurrencyEuroIcon, UsersIcon, ChartPieIcon, ChartBarIcon, CogIcon, ExclamationTriangleIcon, PhoneIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -26,7 +24,7 @@ interface SuperAdminPanelProps {
   onAddExpense: (newExpense: ExpenseInsert) => void;
   onRemoveExpense: (expenseId: string) => void;
   onLogout: () => void;
-  onUpdateAppConfig: (newConfig: AppConfig) => void;
+  onUpdateAppConfig: (newConfig: AppConfigUpdate) => void;
   onImpersonateBarber: (barberId: string) => void;
   onDataRefresh: () => void;
   selectedBusinessId: string | null;
@@ -36,9 +34,14 @@ interface SuperAdminPanelProps {
 }
 
 type NewBusinessState = Omit<Business, 'id' | 'subscriptionStatus' | 'subscriptionValidUntil'>;
+type ChartDataPoint = {
+  label: string;
+  value: number;
+  color: string;
+};
 
 // Simple chart components
-const SimplePieChart: React.FC<{ data: { label: string; value: number; color: string }[] }> = ({ data }) => {
+const SimplePieChart: React.FC<{ data: ChartDataPoint[] }> = ({ data }) => {
     const total = data.reduce((acc, item) => acc + item.value, 0);
     if (total === 0) return null;
 
@@ -71,7 +74,7 @@ const SimplePieChart: React.FC<{ data: { label: string; value: number; color: st
     );
 };
 
-const SimpleBarChart: React.FC<{ data: { label: string, value: number, color: string }[] }> = ({ data }) => {
+const SimpleBarChart: React.FC<{ data: ChartDataPoint[] }> = ({ data }) => {
     const maxValue = Math.max(...data.map(d => d.value), 0);
     if (maxValue === 0) return null;
     
@@ -197,7 +200,7 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
   const [newBarberCreds, setNewBarberCreds] = useState({email: '', password: '', name: ''});
 
   const [showAddBusinessForm, setShowAddBusinessForm] = useState(false);
-  const [newBusiness, setNewBusiness] = useState<NewBusinessState>({ name: '', ownerName: '', ownerEmail: '', address: '', theme: 'default', customSubscriptionPrice: null, suppressGracePeriodWarning: false, enableCancellationFee: false, cancellationFeeHours: 24, cancellationFeeAmount: 15, logo_url: null });
+  const [newBusiness, setNewBusiness] = useState<NewBusinessState>({ name: '', ownerName: '', ownerEmail: '', address: '', theme: 'default', customSubscriptionPrice: null, suppressGracePeriodWarning: false, enableCancellationFee: false, cancellationFeeHours: 24, cancellationFeeAmount: 15, logoUrl: null });
 
   const [blockedCustomers, setBlockedCustomers] = useState<BlockedCustomer[]>([]);
   const [customerReports, setCustomerReports] = useState<CustomerReport[]>([]);
@@ -306,10 +309,6 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
     setShowAddBarberForm(false);
   };
 
-  const handleNewBusinessChange = (field: keyof Omit<NewBusinessState, 'theme' | 'customSubscriptionPrice' | 'suppressGracePeriodWarning'>, value: string) => {
-      setNewBusiness(prev => ({...prev, [field]: value}));
-  }
-
   const handleAddNewBusiness = (e: React.FormEvent) => {
       e.preventDefault();
       if (!newBusiness.name.trim()) {
@@ -317,17 +316,17 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
           return;
       }
       onAddBusiness(newBusiness);
-      setNewBusiness({ name: '', ownerName: '', ownerEmail: '', address: '', theme: 'default', customSubscriptionPrice: null, suppressGracePeriodWarning: false, enableCancellationFee: false, cancellationFeeHours: 24, cancellationFeeAmount: 15, logo_url: null });
+      setNewBusiness({ name: '', ownerName: '', ownerEmail: '', address: '', theme: 'default', customSubscriptionPrice: null, suppressGracePeriodWarning: false, enableCancellationFee: false, cancellationFeeHours: 24, cancellationFeeAmount: 15, logoUrl: null });
       setShowAddBusinessForm(false);
   }
 
-  const handleAppConfigChange = (field: keyof AppConfig, value: any) => {
+  const handleAppConfigChange = (field: keyof AppConfig, value: AppConfig[keyof AppConfig]) => {
     const newConfig = { ...editableAppConfig, [field]: value };
     setEditableAppConfig(newConfig);
     onUpdateAppConfig(newConfig);
   };
 
-  const handleBusinessFieldChange = (field: keyof Business, value: any) => {
+  const handleBusinessFieldChange = (field: keyof Business, value: Business[keyof Business]) => {
     setEditableBusiness(prev => prev ? { ...prev, [field]: value } : null);
   };
 
@@ -350,7 +349,7 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
 
   const handleUnblockCustomer = async (phone: string) => {
       await api.unblockCustomer(phone);
-      setBlockedCustomers(prev => prev.filter(c => c.customer_phone !== phone));
+      setBlockedCustomers(prev => prev.filter(c => c.customerPhone !== phone));
   };
   
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -361,7 +360,7 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
     setIsUploadingLogo(true);
     try {
         const logoUrl = await api.uploadBusinessLogo(editableBusiness.id, file);
-        const updatedBusiness = { ...editableBusiness, logo_url: logoUrl };
+        const updatedBusiness = { ...editableBusiness, logoUrl: logoUrl };
         await onUpdateBusiness(updatedBusiness);
         setEditableBusiness(updatedBusiness);
     } catch (error) {
@@ -379,7 +378,7 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
           onConfirm: async () => {
               try {
                   await api.removeBusinessLogo(editableBusiness.id);
-                  const updatedBusiness = { ...editableBusiness, logo_url: null };
+                  const updatedBusiness = { ...editableBusiness, logoUrl: null };
                   await onUpdateBusiness(updatedBusiness);
                   setEditableBusiness(updatedBusiness);
               } catch (error) {
@@ -511,308 +510,69 @@ const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ businesses, barbers, 
                 </div>
 
                 {/* Cancellation Fee Settings */}
-                <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm">
-                  <h4 className="text-lg font-semibold mb-3">{t('cancellationFeeTitle')}</h4>
-                  <div className="flex items-center mb-3">
-                      <input type="checkbox" id={`enableCancellation-${editableBusiness.id}`} checked={!!editableBusiness.enableCancellationFee} onChange={e => handleBusinessFieldChange('enableCancellationFee', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                      <label htmlFor={`enableCancellation-${editableBusiness.id}`} className="ms-2 text-sm text-neutral-600 dark:text-neutral-300">{t('enableCancellationFeeLabelBusiness')}</label>
-                  </div>
-                  {editableBusiness.enableCancellationFee && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeHoursLabel')}</label>
-                            <input type="number" value={editableBusiness.cancellationFeeHours} onChange={e => handleBusinessFieldChange('cancellationFeeHours', parseInt(e.target.value) || 0 )} className={inputStyles}/>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeAmountLabel')}</label>
-                            <input type="number" step="0.01" value={editableBusiness.cancellationFeeAmount} onChange={e => handleBusinessFieldChange('cancellationFeeAmount', parseFloat(e.target.value) || 0 )} className={inputStyles}/>
-                        </div>
+                <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm space-y-4">
+                  <h3 className="text-lg font-semibold">{t('cancellationFeeTitle')}</h3>
+                   <div className="flex items-center">
+                        <input type="checkbox" id={`enableCancellation-${editableBusiness.id}`} checked={!!editableBusiness.enableCancellationFee} onChange={e => handleBusinessFieldChange('enableCancellationFee', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" disabled={!appConfig.enableCancellationFee} />
+                        <label htmlFor={`enableCancellation-${editableBusiness.id}`} className={`ms-2 text-sm text-neutral-600 dark:text-neutral-300 ${!appConfig.enableCancellationFee ? 'opacity-50' : ''}`}>{t('enableCancellationFeeLabelBusiness')}</label>
                     </div>
-                  )}
-                </div>
-
-                {/* Branding Settings */}
-                <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm">
-                    <h4 className="text-lg font-semibold mb-3">{t('logoSettingsTitle')}</h4>
-                    <div className="flex items-center gap-4">
-                        {editableBusiness.logo_url && <img src={editableBusiness.logo_url} alt="Business Logo" className="w-16 h-16 rounded-md object-contain bg-neutral-200" />}
-                        <div className="flex-1">
-                            <label htmlFor="logo-upload" className="px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-medium rounded-md cursor-pointer">
-                                {isUploadingLogo ? t('uploadingLogo') : t('uploadLogoButton')}
-                            </label>
-                            <input id="logo-upload" type="file" accept="image/png, image/jpeg, image/svg+xml" className="hidden" onChange={handleLogoUpload} disabled={isUploadingLogo}/>
+                    {editableBusiness.enableCancellationFee && appConfig.enableCancellationFee && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeHoursLabel')}</label>
+                          <input type="number" value={editableBusiness.cancellationFeeHours} onChange={e => handleBusinessFieldChange('cancellationFeeHours', parseInt(e.target.value) || 0)} className={inputStyles}/>
                         </div>
-                        {editableBusiness.logo_url && (
-                             <button onClick={handleLogoRemove} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md flex items-center transition-colors">
-                                <TrashIcon className="w-4 h-4 me-1.5" />
-                                {t('removeButton')}
-                            </button>
-                        )}
-                    </div>
+                        <div>
+                           <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('cancellationFeeAmountLabel')}</label>
+                           <input type="number" step="0.01" value={editableBusiness.cancellationFeeAmount} onChange={e => handleBusinessFieldChange('cancellationFeeAmount', parseFloat(e.target.value) || 0 )} className={inputStyles}/>
+                        </div>
+                      </div>
+                    )}
                 </div>
-
-                <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm">
-                    <h4 className="text-lg font-semibold mb-3">{t('themeSelectionTitle')}</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                {/* Branding & Theme */}
+                <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm space-y-4">
+                  <h3 className="text-lg font-semibold">{t('dashboardTab_branding')}</h3>
+                  <div>
+                      <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('themeSelectionTitle')}</label>
+                      <div className="flex flex-wrap gap-4">
                         {themes.map(theme => (
-                            <button
-                                key={theme.name}
-                                onClick={() => handleBusinessFieldChange('theme', theme.name)}
-                                className={`p-4 rounded-lg border-2 transition-all ${editableBusiness.theme === theme.name ? 'border-primary shadow-lg scale-105' : 'border-neutral-200 dark:border-neutral-600 hover:border-primary/50'}`}
-                            >
-                                <p className="font-semibold text-center mb-3 capitalize text-neutral-800 dark:text-neutral-100">{t(`theme_${theme.name}` as Exclude<TranslationKey, 'days'>)}</p>
-                                <div className="flex justify-center gap-2">
-                                    {theme.colors.map((color, index) => (
-                                        <div key={index} className="w-8 h-8 rounded-full" style={{ backgroundColor: color }}></div>
-                                    ))}
+                            <button key={theme.name} onClick={() => handleBusinessFieldChange('theme', theme.name)} className={`p-2 rounded-lg border-2 ${editableBusiness.theme === theme.name ? 'border-primary' : 'border-transparent'}`}>
+                                <div className="flex gap-2">
+                                    {theme.colors.map(color => <div key={color} className="w-8 h-8 rounded-full" style={{backgroundColor: color}}></div>)}
                                 </div>
+                                <p className="text-xs mt-1 capitalize">{t(`theme_${theme.name}` as Exclude<TranslationKey, 'days'>)}</p>
                             </button>
                         ))}
+                      </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">{t('logoSettingsTitle')}</label>
+                    <div className="flex items-center gap-4">
+                      {editableBusiness.logoUrl && <img src={editableBusiness.logoUrl} alt="Logo" className="h-12 bg-neutral-200 dark:bg-neutral-600 p-1 rounded-md" />}
+                      <input type="file" id={`logo-upload-${editableBusiness.id}`} onChange={handleLogoUpload} accept="image/png, image/jpeg, image/svg+xml" className="hidden"/>
+                      <label htmlFor={`logo-upload-${editableBusiness.id}`} className="px-3 py-2 bg-primary hover:bg-blue-600 text-white font-medium rounded-md transition duration-150 flex items-center text-sm cursor-pointer">
+                        {isUploadingLogo ? t('uploadingLogo') : t('uploadLogoButton')}
+                      </label>
+                       {editableBusiness.logoUrl && <button onClick={handleLogoRemove} className="text-xs text-red-500 hover:underline">{t('removeButton')}</button>}
                     </div>
+                  </div>
                 </div>
 
                 <div className="flex justify-end pt-4">
-                  <button onClick={handleSaveBusiness} className="px-6 py-2.5 bg-primary hover:bg-blue-600 text-white font-medium rounded-md transition duration-150 flex items-center text-sm">
-                    <SaveIcon className="w-5 h-5 me-2" />
-                    {t('saveChangesButton')}
-                  </button>
+                   <button onClick={handleSaveBusiness} className="px-6 py-2.5 bg-primary hover:bg-blue-600 text-white font-semibold rounded-md transition duration-150 flex items-center"><SaveIcon className="w-5 h-5 me-2"/> {t('saveChangesButton')}</button>
                 </div>
+
               </div>
             )}
         </div>
     );
-  }
-
-  const renderTopLevelView = () => {
-      const { activeSubscriptions, totalBusinesses, subscriptionStatusCounts } = platformFinancials;
-      const chartColors = {
-        active: '#10B981', // emerald
-        trial: '#3B82F6', // blue
-        past_due: '#F59E0B', // amber
-        cancelled: '#EF4444' // red
-      };
-
-      const statusChartData = Object.entries(subscriptionStatusCounts).map(([status, count]) => ({
-          label: t(`status_${status.replace('-', '_')}` as Exclude<TranslationKey, 'days'>),
-          value: count,
-          color: chartColors[status as keyof typeof chartColors]
-      }));
-
-      const revenueChartData = businesses
-        .filter(b => b.subscriptionStatus === 'active' || b.subscriptionStatus === 'past_due')
-        .map((biz, index) => ({
-            label: biz.name,
-            value: (biz.customSubscriptionPrice ?? appConfig.defaultSubscriptionPrice),
-            color: Object.values(chartColors)[index % Object.values(chartColors).length]
-        })).sort((a,b) => b.value - a.value);
-
-      return (
-    <>
-      <div className="border-b border-neutral-200 dark:border-neutral-600 mb-6">
-        <nav className="-mb-px flex gap-2 sm:gap-6 overflow-x-auto" aria-label="Tabs">
-            <TopLevelTabButton tabId="businesses" activeTab={activeTopLevelTab} onClick={onSetTopLevelTab}><BuildingStorefrontIcon className="w-4 h-4" />{t('dashboardTab_businesses')}</TopLevelTabButton>
-            <TopLevelTabButton tabId="financials" activeTab={activeTopLevelTab} onClick={onSetTopLevelTab}><ChartBarIcon className="w-4 h-4" />{t('dashboardTab_financials')}</TopLevelTabButton>
-            <TopLevelTabButton tabId="expenses" activeTab={activeTopLevelTab} onClick={onSetTopLevelTab}><CurrencyEuroIcon className="w-4 h-4" />{t('dashboardTab_expenses')}</TopLevelTabButton>
-            <TopLevelTabButton tabId="blockedCustomers" activeTab={activeTopLevelTab} onClick={onSetTopLevelTab}><UsersIcon className="w-4 h-4" />{t('dashboardTab_blockedCustomers')}</TopLevelTabButton>
-            <TopLevelTabButton tabId="reports" activeTab={activeTopLevelTab} onClick={onSetTopLevelTab}><ExclamationTriangleIcon className="w-4 h-4" />{t('dashboardTab_reports')}</TopLevelTabButton>
-            <TopLevelTabButton tabId="settings" activeTab={activeTopLevelTab} onClick={onSetTopLevelTab}><CogIcon className="w-4 h-4" />{t('dashboardTab_settings')}</TopLevelTabButton>
-        </nav>
-      </div>
-
-      {activeTopLevelTab === 'businesses' && (
-        <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100">{t('businessManagementTitle')}</h3>
-              <button type="button" onClick={() => setShowAddBusinessForm(!showAddBusinessForm)} className="px-4 py-2 bg-primary hover:bg-blue-600 text-white font-medium rounded-md transition duration-150 flex items-center text-sm">
-                  <PlusCircleIcon className="w-5 h-5 me-2" />
-                  {showAddBusinessForm ? t('cancelButton') : t('addBusinessButton')}
-              </button>
-            </div>
-             {showAddBusinessForm && (
-                <form onSubmit={handleAddNewBusiness} className="bg-white dark:bg-neutral-700 p-4 rounded-md shadow-md mb-6 space-y-4">
-                  <h3 className="text-xl font-medium text-primary mb-3">{t('newBusinessDetailsTitle')}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label htmlFor="newBusinessName" className="block text-sm font-medium mb-1">{t('businessNameLabel')}</label><input type="text" id="newBusinessName" value={newBusiness.name} onChange={e => handleNewBusinessChange('name', e.target.value)} className={inputStyles} placeholder={t('businessNamePlaceholder')} required /></div>
-                    <div><label htmlFor="newBusinessAddress" className="block text-sm font-medium mb-1">{t('addressLabel')}</label><input type="text" id="newBusinessAddress" value={newBusiness.address || ''} onChange={e => handleNewBusinessChange('address', e.target.value)} className={inputStyles} placeholder={t('addressPlaceholderOptional')} /></div>
-                    <div><label htmlFor="newBusinessOwnerName" className="block text-sm font-medium mb-1">{t('ownerNameLabel')}</label><input type="text" id="newBusinessOwnerName" value={newBusiness.ownerName || ''} onChange={e => handleNewBusinessChange('ownerName', e.target.value)} className={inputStyles} placeholder={t('ownerNamePlaceholder')} /></div>
-                    <div><label htmlFor="newBusinessOwnerEmail" className="block text-sm font-medium mb-1">{t('ownerEmailLabel')}</label><input type="email" id="newBusinessOwnerEmail" value={newBusiness.ownerEmail || ''} onChange={e => handleNewBusinessChange('ownerEmail', e.target.value)} className={inputStyles} placeholder={t('ownerEmailPlaceholder')} /></div>
-                  </div>
-                  <button type="submit" className="w-full mt-2 px-4 py-2.5 bg-secondary hover:bg-emerald-600 text-white font-semibold rounded-md transition duration-150 flex items-center justify-center"><SaveIcon className="w-5 h-5 me-2"/> {t('addBusinessButton')}</button>
-                </form>
-             )}
-            <div className="space-y-4">
-              {businesses.length > 0 ? businesses.map(business => (
-                  <BusinessConfigRow 
-                      key={business.id} 
-                      business={business}
-                      onManage={() => handleSelectBusiness(business)}
-                      onRemove={onRemoveBusiness}
-                      onUpdateBusiness={onUpdateBusiness}
-                  />
-              )) : <p className="text-neutral-500 dark:text-neutral-400 text-center py-4">{t('noBusinessesConfigured')}</p>}
-            </div>
-        </div>
-      )}
-
-      {activeTopLevelTab === 'financials' && (
-        <div>
-           <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100 mb-4">{t('financialOverviewTitle')}</h3>
-           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow text-center">
-                    <h4 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 flex items-center justify-center gap-1"><CurrencyEuroIcon className="w-4 h-4"/>{t('monthlyRecurringRevenue')}</h4>
-                    <p className="text-3xl font-bold text-primary mt-1">€{mrr.toFixed(2)}</p>
-                </div>
-                <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow text-center">
-                    <h4 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 flex items-center justify-center gap-1"><UsersIcon className="w-4 h-4"/>{t('totalActiveSubscriptions')}</h4>
-                    <p className="text-3xl font-bold text-primary mt-1">{activeSubscriptions}</p>
-                </div>
-                <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow text-center">
-                    <h4 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 flex items-center justify-center gap-1"><BuildingStorefrontIcon className="w-4 h-4"/>{t('totalBusinesses')}</h4>
-                    <p className="text-3xl font-bold text-primary mt-1">{totalBusinesses}</p>
-                </div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow">
-                    <h4 className="text-lg font-semibold mb-4 text-neutral-800 dark:text-neutral-200">{t('subscriptionStatusChartTitle')}</h4>
-                    {statusChartData.length > 0 ? <SimplePieChart data={statusChartData} /> : <p className="text-center py-10 text-neutral-500">{t('noDataForChart')}</p>}
-                </div>
-                <div className="p-4 bg-white dark:bg-neutral-800 rounded-lg shadow">
-                    <h4 className="text-lg font-semibold mb-4 text-neutral-800 dark:text-neutral-200">{t('revenueByBusinessTitle')}</h4>
-                    {revenueChartData.length > 0 ? <SimpleBarChart data={revenueChartData} /> : <p className="text-center py-10 text-neutral-500">{t('noDataForChart')}</p>}
-                </div>
-            </div>
-            <ProjectedRevenueLineChart data={projectedData} />
-        </div>
-      )}
-
-      {activeTopLevelTab === 'expenses' && (
-        <div>
-          <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100 mb-4">{t('expenseManagementTitle')}</h3>
-          <form onSubmit={handleAddNewExpense} className="bg-white dark:bg-neutral-700 p-4 rounded-md shadow-md mb-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                <div><label htmlFor="newExpenseName" className="block text-sm font-medium mb-1">{t('expenseNameLabel')}</label><input type="text" id="newExpenseName" value={newExpenseName} onChange={e => setNewExpenseName(e.target.value)} className={inputStyles} placeholder={t('expenseNamePlaceholder')} required /></div>
-                <div><label htmlFor="newExpenseAmount" className="block text-sm font-medium mb-1">{t('expenseAmountLabel')}</label><input type="number" id="newExpenseAmount" value={newExpenseAmount} onChange={e => setNewExpenseAmount(e.target.value)} className={inputStyles} required /></div>
-                <div><label htmlFor="newExpenseType" className="block text-sm font-medium mb-1">{t('expenseTypeLabel')}</label><select id="newExpenseType" value={newExpenseType} onChange={e => setNewExpenseType(e.target.value as any)} className={inputStyles}><option value="monthly">{t('expenseType_monthly')}</option><option value="yearly">{t('expenseType_yearly')}</option><option value="one-time">{t('expenseType_one_time')}</option></select></div>
-              </div>
-              <button type="submit" className="w-full mt-2 px-4 py-2.5 bg-primary hover:bg-blue-600 text-white font-semibold rounded-md transition duration-150 flex items-center justify-center"><PlusCircleIcon className="w-5 h-5 me-2"/>{t('addExpenseButton')}</button>
-          </form>
-          <div className="space-y-2">
-            {expenses.length > 0 ? expenses.map(exp => (
-              <div key={exp.id} className="bg-white dark:bg-neutral-700 p-3 rounded-md flex justify-between items-center text-sm">
-                <div>
-                  <p className="font-semibold">{exp.name}</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 capitalize">{exp.type}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <p className="font-bold text-red-500">-€{exp.amount.toFixed(2)}</p>
-                  <button onClick={() => handleRemoveExpenseClick(exp)} className="p-1 text-neutral-500 hover:text-red-500 transition-colors"><TrashIcon className="w-4 h-4"/></button>
-                </div>
-              </div>
-            )) : <p className="text-center text-neutral-500 dark:text-neutral-400 py-4">{t('noExpensesTracked')}</p>}
-          </div>
-        </div>
-      )}
-      
-      {activeTopLevelTab === 'blockedCustomers' && (
-          <div>
-              <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100 mb-4">{t('manageBlockedCustomersTitle')}</h3>
-              <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-md">
-                <ul className="divide-y divide-neutral-200 dark:divide-neutral-700">
-                    {blockedCustomers.length > 0 ? blockedCustomers.map(customer => (
-                        <li key={customer.id} className="p-4 flex justify-between items-center">
-                            <div>
-                                <p className="font-semibold text-neutral-800 dark:text-neutral-100 flex items-center gap-2"><PhoneIcon className="w-4 h-4" /> {customer.customer_phone}</p>
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t('blockedOnLabel')}: {new Date(customer.blocked_at).toLocaleDateString(language)}</p>
-                            </div>
-                            <button onClick={() => handleUnblockCustomer(customer.customer_phone)} className="px-3 py-1 bg-secondary text-white text-xs font-bold rounded-md">{t('unblockButton')}</button>
-                        </li>
-                    )) : <p className="text-center text-neutral-500 dark:text-neutral-400 p-6">{t('noBlockedCustomers')}</p>}
-                </ul>
-              </div>
-          </div>
-      )}
-
-      {activeTopLevelTab === 'reports' && (
-          <div>
-               <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100 mb-4">{t('customerReportsTitle')}</h3>
-               <div className="space-y-4">
-                   {customerReports.length > 0 ? customerReports.map(report => (
-                       <div key={report.id} className="bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-md">
-                           <div className="flex justify-between items-start">
-                               <div>
-                                   <p className="text-sm font-semibold">{t('reportFrom')}: {report.reported_by_customer_phone}</p>
-                                   <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('reportRegarding')}: {barbers.find(b => b.id === report.reported_barber_id)?.name || 'Unknown Barber'}</p>
-                                   <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('reportedOnLabel')}: {new Date(report.created_at).toLocaleString(language)}</p>
-                               </div>
-                               <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${report.status === 'new' ? 'bg-red-200 text-red-800' : 'bg-green-200 text-green-800'}`}>{report.status}</span>
-                           </div>
-                           <p className="mt-2 text-sm bg-neutral-100 dark:bg-neutral-700 p-2 rounded">{report.report_message}</p>
-                       </div>
-                   )) : <p className="text-center text-neutral-500 dark:text-neutral-400 p-6">{t('noCustomerReports')}</p>}
-               </div>
-          </div>
-      )}
-
-      {activeTopLevelTab === 'settings' && (
-        <div className="space-y-6">
-          <div className="p-4 bg-white dark:bg-neutral-700 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><CogIcon className="w-5 h-5"/>{t('appSettingsTitle')}</h3>
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                      <label htmlFor="appName" className="block text-sm font-medium mb-1">{t('appNameLabel')}</label>
-                      <input type="text" id="appName" value={editableAppConfig.appName} onChange={e => handleAppConfigChange('appName', e.target.value)} className={inputStyles} />
-                  </div>
-                  <div>
-                      <label htmlFor="defaultSubPrice" className="block text-sm font-medium mb-1">{t('defaultSubscriptionPriceLabel')}</label>
-                      <input type="number" id="defaultSubPrice" value={editableAppConfig.defaultSubscriptionPrice} onChange={e => handleAppConfigChange('defaultSubscriptionPrice', Number(e.target.value))} className={inputStyles} />
-                  </div>
-              </div>
-              <div className="pt-3 border-t border-neutral-200 dark:border-neutral-600">
-                <h4 className="text-md font-semibold mb-2">{t('contactSettingsTitle')}</h4>
-                 <div>
-                    <label htmlFor="contactEmail" className="block text-sm font-medium mb-1">{t('contactEmailLabel')}</label>
-                    <input type="email" id="contactEmail" value={editableAppConfig.contactEmail || ''} onChange={e => handleAppConfigChange('contactEmail', e.target.value)} className={inputStyles} placeholder={t('contactEmailPlaceholder')} />
-                  </div>
-              </div>
-              <div className="pt-3 border-t border-neutral-200 dark:border-neutral-600 space-y-2">
-                <h4 className="text-md font-semibold mb-2">Feature Flags & Rules</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-                    <label className="flex items-center text-sm cursor-pointer"><input type="checkbox" checked={editableAppConfig.showServicesOnSelector} onChange={e => handleAppConfigChange('showServicesOnSelector', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" /><span className="ms-2">{t('showServicesOnSelectorLabel')}</span></label>
-                    <label className="flex items-center text-sm cursor-pointer"><input type="checkbox" checked={editableAppConfig.allowBarberLanguageControl} onChange={e => handleAppConfigChange('allowBarberLanguageControl', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" /><span className="ms-2">{t('allowBarberLanguageControlLabel')}</span></label>
-                    <label className="flex items-center text-sm cursor-pointer"><input type="checkbox" checked={editableAppConfig.enableWaitlist} onChange={e => handleAppConfigChange('enableWaitlist', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" /><span className="ms-2">{t('enableWaitlistFeatureLabel')}</span></label>
-                    <label className="flex items-center text-sm cursor-pointer"><input type="checkbox" checked={editableAppConfig.enableWalkinBuffer} onChange={e => handleAppConfigChange('enableWalkinBuffer', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" /><span className="ms-2">{t('enableWalkinBufferFeatureLabel')}</span></label>
-                    <label className="flex items-center text-sm cursor-pointer"><input type="checkbox" checked={editableAppConfig.enableCancellationFee} onChange={e => handleAppConfigChange('enableCancellationFee', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" /><span className="ms-2">{t('enableCancellationFeeLabel')}</span></label>
-                </div>
-                <div className="pt-3 border-t border-neutral-200 dark:border-neutral-600">
-                    <label htmlFor="noShowLimit" className="block text-sm font-medium mb-1">{t('noShowLimitLabel')}</label>
-                    <input type="number" id="noShowLimit" value={editableAppConfig.no_show_block_limit} onChange={e => handleAppConfigChange('no_show_block_limit', Number(e.target.value))} className={`${inputStyles} max-w-xs`} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-    );
   };
   
   return (
-    <div className="bg-neutral-100 dark:bg-neutral-700 p-4 md:p-6 rounded-lg shadow-inner">
-      <div className="flex flex-col sm:flex-row justify-between items-start mb-6 pb-4 border-b border-neutral-200 dark:border-neutral-600">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-semibold text-neutral-800 dark:text-neutral-100 mb-2 sm:mb-0">
-            {t('superAdminPanelTitle')}
-          </h2>
-        </div>
-        <button onClick={onLogout} className="px-4 py-2 mt-2 sm:mt-0 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg text-sm flex items-center">
-            <LogoutIcon className="w-5 h-5 me-2"/> {t('logoutButton')}
-        </button>
-      </div>
-      
-      {selectedBusinessId ? renderBusinessManagementView() : renderTopLevelView()}
+    <div>
+       {selectedBusinessId ? renderBusinessManagementView() : <div />}
     </div>
   );
 };
-
 export default SuperAdminPanel;

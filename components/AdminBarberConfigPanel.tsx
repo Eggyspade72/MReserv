@@ -1,5 +1,5 @@
 import React from 'react';
-import { Barber, Appointment, AppConfig } from '../types';
+import { Barber, Appointment, AppConfig, AppConfigUpdate } from '../types';
 import { CogIcon, ExclamationTriangleIcon, TrashIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import BarberConfigRow from './BarberConfigRow';
@@ -12,7 +12,7 @@ interface AdminBarberConfigPanelProps {
   onRemoveBarber: (barberId: string) => void;
   onCancelAppointment: (appointmentId: string) => void;
   onResetAllAppointments: () => void;
-  onUpdateAppConfig: (newConfig: AppConfig) => void;
+  onUpdateAppConfig: (newConfig: AppConfigUpdate) => void;
   onImpersonateBarber: (barberId: string) => void;
 }
 
@@ -29,7 +29,7 @@ const AdminBarberConfigPanel: React.FC<AdminBarberConfigPanelProps> = ({
 }) => {
   const { t } = useLanguage();
 
-  const handleAppConfigChange = (field: keyof AppConfig, value: any) => {
+  const handleAppConfigChange = (field: keyof AppConfig, value: AppConfig[keyof AppConfig]) => {
     const newConfig = { ...appConfig, [field]: value };
     onUpdateAppConfig(newConfig); // Update immediately on change
   };

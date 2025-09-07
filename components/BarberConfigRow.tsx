@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from 'react';
 import { Barber, Appointment, Service, TimeOff } from '../types';
 import {
@@ -50,14 +47,20 @@ const BarberConfigRow: React.FC<BarberConfigRowProps> = ({ barber, appointments,
     setViewingAppointments(!viewingAppointments);
   };
   
-  const handleChange = (field: keyof Omit<Barber, 'services' | 'timeOff'>, value: any) => {
+  const handleChange = (field: keyof Barber, value: Barber[keyof Barber]) => {
     setEditableBarber(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleServiceChange = (index: number, field: keyof Service, value: string | number) => {
+  const handleServiceChange = (index: number, field: keyof Service, value: string) => {
     const updatedServices = [...editableBarber.services];
     const serviceToUpdate = { ...updatedServices[index] };
-    (serviceToUpdate[field] as any) = (field === 'price' || field === 'duration') ? Number(value) : value;
+    
+    if (field === 'price' || field === 'duration') {
+      serviceToUpdate[field] = Number(value);
+    } else if (field === 'name') {
+      serviceToUpdate[field] = value;
+    }
+    
     updatedServices[index] = serviceToUpdate;
     setEditableBarber(prev => ({ ...prev, services: updatedServices }));
   };

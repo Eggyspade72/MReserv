@@ -3,8 +3,8 @@ export type Json =
   | number
   | boolean
   | null
-  | { [key: string]: any }
-  | any[]
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export interface Database {
   public: {
@@ -20,8 +20,8 @@ export interface Database {
           enableWalkinBuffer: boolean
           id: number
           showServicesOnSelector: boolean
-          no_show_block_limit: number
-        }
+          noShowBlockLimit: number
+        },
         Insert: {
           allowBarberLanguageControl?: boolean
           appName?: string
@@ -32,8 +32,8 @@ export interface Database {
           enableWalkinBuffer?: boolean
           id?: number
           showServicesOnSelector?: boolean
-          no_show_block_limit?: number
-        }
+          noShowBlockLimit?: number
+        },
         Update: {
           allowBarberLanguageControl?: boolean
           appName?: string
@@ -44,9 +44,9 @@ export interface Database {
           enableWalkinBuffer?: boolean
           id?: number
           showServicesOnSelector?: boolean
-          no_show_block_limit?: number
+          noShowBlockLimit?: number
         }
-      }
+      },
       appointments: {
         Row: {
           barberId: string
@@ -61,7 +61,7 @@ export interface Database {
           totalDuration: number
           totalPrice: number
           wantsEarlierSlot: boolean | null
-        }
+        },
         Insert: {
           barberId: string
           businessId: string
@@ -75,7 +75,7 @@ export interface Database {
           totalDuration: number
           totalPrice: number
           wantsEarlierSlot?: boolean | null
-        }
+        },
         Update: {
           barberId?: string
           businessId?: string
@@ -90,7 +90,7 @@ export interface Database {
           totalPrice?: number
           wantsEarlierSlot?: boolean | null
         }
-      }
+      },
       barbers: {
         Row: {
           allowedLanguages: string[] | null
@@ -109,7 +109,7 @@ export interface Database {
           preferredLanguage: string | null
           recurringClosedDays: number[]
           scheduleOverrides: Json
-          daily_location_overrides: Json | null
+          dailyLocationOverrides: Json | null
           services: Json
           showPricesOnBooking: boolean | null
           showServicesOnSelector: boolean | null
@@ -117,7 +117,7 @@ export interface Database {
           walkinBufferMinutes: number
           workEndTime: string
           workStartTime: string
-        }
+        },
         Insert: {
           allowedLanguages?: string[] | null
           avatarUrl?: string | null
@@ -135,7 +135,7 @@ export interface Database {
           preferredLanguage?: string | null
           recurringClosedDays: number[]
           scheduleOverrides: Json
-          daily_location_overrides?: Json | null
+          dailyLocationOverrides?: Json | null
           services: Json
           showPricesOnBooking?: boolean | null
           showServicesOnSelector?: boolean | null
@@ -143,7 +143,7 @@ export interface Database {
           walkinBufferMinutes?: number
           workEndTime: string
           workStartTime: string
-        }
+        },
         Update: {
           allowedLanguages?: string[] | null
           avatarUrl?: string | null
@@ -161,7 +161,7 @@ export interface Database {
           preferredLanguage?: string | null
           recurringClosedDays?: number[]
           scheduleOverrides?: Json
-          daily_location_overrides?: Json | null
+          dailyLocationOverrides?: Json | null
           services?: Json
           showPricesOnBooking?: boolean | null
           showServicesOnSelector?: boolean | null
@@ -170,7 +170,7 @@ export interface Database {
           workEndTime?: string
           workStartTime?: string
         }
-      }
+      },
       businesses: {
         Row: {
           address: string | null
@@ -186,8 +186,8 @@ export interface Database {
           subscriptionValidUntil: string
           suppressGracePeriodWarning: boolean | null
           theme: string | null
-          logo_url: string | null
-        }
+          logoUrl: string | null
+        },
         Insert: {
           address?: string | null
           cancellationFeeAmount?: number
@@ -202,8 +202,8 @@ export interface Database {
           subscriptionValidUntil: string
           suppressGracePeriodWarning?: boolean | null
           theme?: string | null
-          logo_url?: string | null
-        }
+          logoUrl?: string | null
+        },
         Update: {
           address?: string | null
           cancellationFeeAmount?: number
@@ -218,9 +218,9 @@ export interface Database {
           subscriptionValidUntil?: string
           suppressGracePeriodWarning?: boolean | null
           theme?: string | null
-          logo_url?: string | null
+          logoUrl?: string | null
         }
-      }
+      },
       expenses: {
         Row: {
           amount: number
@@ -228,14 +228,14 @@ export interface Database {
           id: string
           name: string
           type: "monthly" | "yearly" | "one-time"
-        }
+        },
         Insert: {
           amount: number
           dateAdded?: string
           id?: string
           name: string
           type: "monthly" | "yearly" | "one-time"
-        }
+        },
         Update: {
           amount?: number
           dateAdded?: string
@@ -243,69 +243,94 @@ export interface Database {
           name?: string
           type?: "monthly" | "yearly" | "one-time"
         }
-      }
+      },
       blocked_customers: {
         Row: {
           id: string
-          customer_phone: string
-          is_blocked: boolean
-          blocked_at: string
+          customerPhone: string
+          isBlocked: boolean
+          blockedAt: string
           reason: string | null
-        }
+        },
         Insert: {
           id?: string
-          customer_phone: string
-          is_blocked?: boolean
-          blocked_at?: string
+          customerPhone: string
+          isBlocked?: boolean
+          blockedAt?: string
           reason?: string | null
-        }
+        },
         Update: {
           id?: string
-          customer_phone?: string
-          is_blocked?: boolean
-          blocked_at?: string
+          customerPhone?: string
+          isBlocked?: boolean
+          blockedAt?: string
           reason?: string | null
         }
-      }
+      },
       customer_reports: {
         Row: {
             id: string
-            created_at: string
-            reported_by_customer_phone: string
-            reported_barber_id: string
-            report_message: string
+            createdAt: string
+            reportedByCustomerPhone: string
+            reportedBarberId: string
+            reportMessage: string
             status: "new" | "in_progress" | "resolved"
             businessId: string
-        }
+        },
         Insert: {
             id?: string
-            created_at?: string
-            reported_by_customer_phone: string
-            reported_barber_id: string
-            report_message: string
+            createdAt?: string
+            reportedByCustomerPhone: string
+            reportedBarberId: string
+            reportMessage: string
             status?: "new" | "in_progress" | "resolved"
             businessId: string
-        }
+        },
         Update: {
             id?: string
-            created_at?: string
-            reported_by_customer_phone?: string
-            reported_barber_id?: string
-            report_message?: string
+            createdAt?: string
+            reportedByCustomerPhone?: string
+            reportedBarberId?: string
+            // FIX: Made reportMessage optional for update operations.
+            reportMessage?: string
             status?: "new" | "in_progress" | "resolved"
             businessId?: string
         }
-      }
-    }
+      },
+    },
     Views: {
       [_ in never]: never
-    }
+    },
     Functions: {
-      [_ in never]: never
-    }
+      delete_barber_user: {
+        Args: {
+          user_id_to_delete: string
+        },
+        // FIX: The Supabase client's type inference was failing, causing arguments to be typed as `never`.
+        // Changing the return type for RPC functions without a return value to `null` resolves this.
+        Returns: null
+      },
+      delete_business_and_dependents: {
+        Args: {
+          business_id_to_delete: string
+        },
+        // FIX: The Supabase client's type inference was failing, causing arguments to be typed as `never`.
+        // Changing the return type for RPC functions without a return value to `null` resolves this.
+        Returns: null
+      },
+      handle_no_show: {
+        Args: {
+          p_customer_phone: string
+          p_block_limit: number
+        },
+        // FIX: The Supabase client's type inference was failing, causing arguments to be typed as `never`.
+        // Changing the return type for RPC functions without a return value to `null` resolves this.
+        Returns: null
+      }
+    },
     Enums: {
       [_ in never]: never
-    }
+    },
     CompositeTypes: {
       [_ in never]: never
     }

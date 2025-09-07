@@ -6,29 +6,8 @@
     <title>MReserve Booking System</title>
     <link rel="icon" href="data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3e%3crect x='10' y='10' width='80' height='80' rx='10' fill='none' stroke='%233B82F6' stroke-width='8'/%3e%3cline x1='10' y1='35' x2='90' y2='35' stroke='%233B82F6' stroke-width='8'/%3e%3cline x1='30' y1='10' x2='30' y2='35' stroke='%233B82F6' stroke-width='8'/%3e%3cline x1='70' y1='10' x2='70' y2='35' stroke='%233B82F6' stroke-width='8'/%3e%3c/svg%3e">
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              primary: 'rgb(var(--color-primary) / <alpha-value>)',
-              secondary: 'rgb(var(--color-secondary) / <alpha-value>)',
-              accent: 'rgb(var(--color-accent) / <alpha-value>)',
-              neutral: {
-                100: '#F3F4F6',
-                200: '#E5E7EB',
-                700: '#374151',
-                800: '#1F2937',
-                900: '#111827',
-              },
-            }
-          }
-        }
-      }
-    </script>
     <style>
+      /* Jouw bestaande theme-gerelateerde variabelen */
       :root, [data-theme="default"] {
         --hue: 223;
         --color-primary: 59 130 246; /* Blue-500 */
@@ -45,23 +24,30 @@
         --color-secondary: 239 68 68; /* Red-500 */
         --color-accent: 217 119 6; /* Amber-600 */
       }
-      
-      /* --- Custom Loading Screen --- */
+
+      /* --- Correcte Loading Screen Stijlen voor de Complexe Animatie --- */
       #loading-screen {
         position: fixed;
         inset: 0;
         z-index: 9999;
-        background-color: #111827; /* Tailwind neutral-900 */
+        background-color: hsl(var(--hue), 10%, 90%); /* Lichte achtergrond, zoals in voorbeeld */
         display: flex;
         align-items: center;
         justify-content: center;
         transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
       }
+
+      /* Donkere modus aanpassing */
+      .dark #loading-screen {
+        background-color: hsl(var(--hue), 10%, 10%); /* Donkere achtergrond */
+      }
+
       #loading-screen.loaded {
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
       }
+
       .pl,
       .pl__worm {
         animation-duration: 3s;
@@ -70,46 +56,35 @@
       .pl {
         animation-name: bump;
         animation-timing-function: linear;
-        width: 128px;
-        height: 128px;
+        width: 8em;
+        height: 8em;
       }
       .pl__ring {
-        stroke: hsla(var(--hue), 10%, 90%, 0.1);
+        stroke: hsla(var(--hue), 10%, 10%, 0.1); /* Donkere ring voor lichte modus */
+        transition: stroke 0.3s;
       }
       .dark .pl__ring {
-        stroke: hsla(var(--hue), 10%, 10%, 0.1);
+        stroke: hsla(var(--hue), 10%, 90%, 0.1); /* Lichte ring voor donkere modus */
       }
       .pl__worm {
         animation-name: worm;
-        animation-timing-function: cubic-bezier(0.42,0.17,0.75,0.83);
+        animation-timing-function: cubic-bezier(0.42, 0.17, 0.75, 0.83);
       }
 
-      /* Animations */
+      /* Animaties */
       @keyframes bump {
-        from,
-        42%,
-        46%,
-        51%,
-        55%,
-        59%,
-        63%,
-        67%,
-        71%,
-        74%,
-        78%,
-        81%,
-        85%,
-        88%,
-        92%,
-        to { transform: translate(0,0); }
-        44% { transform: translate(1.33%,6.75%); }
-        53% { transform: translate(-16.67%,-0.54%); }
-        61% { transform: translate(3.66%,-2.46%); }
-        69% { transform: translate(-0.59%,15.27%); }
-        76% { transform: translate(-1.92%,-4.68%); }
-        83% { transform: translate(9.38%,0.96%); }
-        90% { transform: translate(-4.55%,1.98%); }
+        from, 42%, 46%, 51%, 55%, 59%, 63%, 67%, 71%, 74%, 78%, 81%, 85%, 88%, 92%, to {
+          transform: translate(0, 0);
+        }
+        44% { transform: translate(1.33%, 6.75%); }
+        53% { transform: translate(-16.67%, -0.54%); }
+        61% { transform: translate(3.66%, -2.46%); }
+        69% { transform: translate(-0.59%, 15.27%); }
+        76% { transform: translate(-1.92%, -4.68%); }
+        83% { transform: translate(9.38%, 0.96%); }
+        90% { transform: translate(-4.55%, 1.98%); }
       }
+
       @keyframes worm {
         from { stroke-dashoffset: 10; }
         25% { stroke-dashoffset: 295; }
@@ -122,7 +97,10 @@
     "react-dom/": "https://esm.sh/react-dom@^18.3.1/",
     "react/": "https://esm.sh/react@^18.3.1/",
     "react": "https://esm.sh/react@^18.3.1",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "vite": "https://aistudiocdn.com/vite@^7.1.4",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.2"
   }
 }
 </script>
@@ -143,17 +121,17 @@
             r="56" cx="64" cy="64" 
             fill="none" 
             stroke-width="16" 
-            stroke-linecap="round" 
+            stroke-linecap="round"
           />
           <path 
             class="pl__worm" 
-            d="M64,120A56,56,0,1,1,64,8" 
+            d="M92,15.492S78.194,4.967,66.743,16.887c-17.231,17.938-28.26,96.974-28.26,96.974L119.85,59.892l-99-31.588,57.528,89.832L97.8,19.349,13.636,88.51l89.012,16.015S81.908,38.332,66.1,22.337C50.114,6.156,36,15.492,36,15.492a56,56,0,1,0,56,0Z" 
             fill="none" 
             stroke="url(#pl-grad)" 
             stroke-width="16" 
             stroke-linecap="round" 
             stroke-linejoin="round" 
-            stroke-dasharray="44 323" 
+            stroke-dasharray="44 1111" 
             stroke-dashoffset="10" 
           />
         </svg>

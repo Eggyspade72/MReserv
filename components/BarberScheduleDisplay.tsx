@@ -1,5 +1,11 @@
 
 
+
+
+
+
+
+
 import React from 'react';
 import { Barber, Appointment, TimeSlotDisplayInfo, AppConfig } from '../types';
 import { ClockIcon, LockClosedIcon, HomeIcon, MapPinIcon } from './Icons';
@@ -57,7 +63,8 @@ const BarberScheduleDisplay: React.FC<BarberScheduleDisplayProps> = ({
   const displayDateString = displayDate.toISOString().split('T')[0];
   const dayOfWeek = displayDate.getDay();
   const scheduleOverride = barber.scheduleOverrides[displayDateString];
-  const locationOverride = barber.daily_location_overrides?.[displayDateString];
+  // FIX: Corrected property access from daily_location_overrides to dailyLocationOverrides.
+  const locationOverride = barber.dailyLocationOverrides?.[displayDateString];
   
   let isWorkingToday: boolean;
   let effectiveBookingType = bookingType;

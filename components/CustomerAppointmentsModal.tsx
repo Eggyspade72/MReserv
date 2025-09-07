@@ -1,5 +1,7 @@
 
 
+
+
 import React from 'react';
 import { Appointment, Barber } from '../types';
 import { CalendarIcon, ClockIcon, UserCircleIcon, TrashIcon, XCircleIcon, PhoneIcon, HomeIcon } from './Icons';

@@ -1,4 +1,6 @@
 
+
+
 import type { Database, Json } from './services/db_types';
 
 export interface Service {
@@ -31,17 +33,19 @@ export type Business = Database['public']['Tables']['businesses']['Row'];
 // For Barber and Appointment, we define a "friendly" type for use in the app,
 // converting JSON fields to specific object types. The raw DB types use `Json`.
 type DbBarberRow = Database['public']['Tables']['barbers']['Row'];
-interface BarberBase extends Omit<DbBarberRow, 'services' | 'blockedSlots' | 'scheduleOverrides' | 'timeOff' | 'daily_location_overrides'> {}
+// FIX: Changed invalid `interface extends Omit` to a valid `type` alias. This prevents cascading type errors.
+type BarberBase = Omit<DbBarberRow, 'services' | 'blockedSlots' | 'scheduleOverrides' | 'timeOff' | 'dailyLocationOverrides'>;
 export interface Barber extends BarberBase {
     services: Service[];
     blockedSlots: BlockedSlot[];
     scheduleOverrides: Record<string, { closed: boolean }>;
     timeOff: TimeOff[];
-    daily_location_overrides: Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null;
+    dailyLocationOverrides: Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null;
 }
 
 type DbAppointmentRow = Database['public']['Tables']['appointments']['Row'];
-interface AppointmentBase extends Omit<DbAppointmentRow, 'services'> {}
+// FIX: Corrected an invalid `interface extends Omit` which caused cascading type errors.
+type AppointmentBase = Omit<DbAppointmentRow, 'services'>;
 export interface Appointment extends AppointmentBase {
     services: Service[];
 }

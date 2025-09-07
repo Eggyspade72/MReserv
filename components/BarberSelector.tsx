@@ -1,11 +1,11 @@
 
 
-
 import React from 'react';
 import { Barber, Business } from '../types';
-import { ChevronRightIcon, PhoneIcon, MapPinIcon, LockClosedIcon, ClockIcon } from './Icons';
+import { ChevronRightIcon, PhoneIcon, MapPinIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { isBarberEffectivelyClosed } from '../utils';
+import BarberSchedulability from './BarberSchedulability';
 
 interface BarberSelectorProps {
   barbers: Barber[];
@@ -62,20 +62,7 @@ const BarberSelector: React.FC<BarberSelectorProps> = ({ barbers, businesses, on
             )}
             <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100 mb-2">{barber.name}</h3>
             
-            {isClosed ? (
-              <div className="my-2 p-2 bg-neutral-200 dark:bg-neutral-600 rounded-md w-full">
-                <p className="text-sm text-amber-500 dark:text-amber-400 font-semibold flex items-center justify-center">
-                  <LockClosedIcon className="w-4 h-4 me-1.5"/>
-                  {t('barberStatusClosed')}
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3 flex items-center">
-                   <ClockIcon className="w-4 h-4 me-1.5"/> {barber.workStartTime} - {barber.workEndTime}
-                </p>
-              </>
-            )}
+            <BarberSchedulability barber={barber} business={business} />
 
             {barber.phoneNumber && (
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1 flex items-center">

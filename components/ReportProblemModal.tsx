@@ -1,5 +1,8 @@
 
 
+
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { XCircleIcon, CheckCircleIcon } from './Icons';
@@ -51,10 +54,10 @@ const ReportProblemModal: React.FC<ReportProblemModalProps> = ({ isOpen, onClose
         }
 
         onSubmit({
-            reported_by_customer_phone: phone,
+            reportedByCustomerPhone: phone,
             businessId: selectedBusinessId,
-            reported_barber_id: selectedBarberId,
-            report_message: message,
+            reportedBarberId: selectedBarberId,
+            reportMessage: message,
         });
     };
 

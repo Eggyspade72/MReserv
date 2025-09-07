@@ -1,4 +1,6 @@
 
+
+
 import { supabase } from './supabase';
 import type { Session, User } from '@supabase/supabase-js';
 import { 
@@ -59,13 +61,15 @@ export async function getBarberProfile(userId: string): Promise<{ data: Barber |
     }
 
     // Safely transform the raw DB data to the application-level type
+    // @ts-ignore
+    const { services, blockedSlots, scheduleOverrides, timeOff, dailyLocationOverrides, ...rest } = dbData as Database['public']['Tables']['barbers']['Row'];
     const profile: Barber = {
-        ...dbData,
-        services: (dbData.services as unknown as Service[]) || [],
-        blockedSlots: (dbData.blockedSlots as unknown as BlockedSlot[]) || [],
-        scheduleOverrides: (dbData.scheduleOverrides as Record<string, { closed: boolean }>) || {},
-        timeOff: (dbData.timeOff as unknown as TimeOff[]) || [],
-        daily_location_overrides: (dbData.daily_location_overrides as Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null) || null,
+        ...rest,
+        services: (services as unknown as Service[]) || [],
+        blockedSlots: (blockedSlots as unknown as BlockedSlot[]) || [],
+        scheduleOverrides: (scheduleOverrides as Record<string, { closed: boolean }>) || {},
+        timeOff: (timeOff as unknown as TimeOff[]) || [],
+        dailyLocationOverrides: (dailyLocationOverrides as Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null) || null,
     };
 
     return { data: profile, error: null };
@@ -87,64 +91,25 @@ export async function addBusiness(business: Omit<Business, 'id' | 'subscriptionS
         subscriptionValidUntil: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0],
     };
 
-    const { error } = await supabase.from('businesses').insert([businessToAdd] as any);
+    const { error } = await supabase.from('businesses').insert([businessToAdd]);
     if (error) throw error;
 }
 
 export async function updateBusiness(id: string, updates: BusinessUpdate) {
-    const { error } = await supabase.from('businesses').update(updates as any).eq('id', id);
+    const { error } = await supabase.from('businesses').update(updates).eq('id', id);
     if (error) {
         console.error("Supabase updateBusiness error:", error);
         throw error;
     }
 }
 
+// Replaced client-side cascade with a secure RPC call for robustness.
+// A corresponding function `delete_business_and_dependents` must be created in the Supabase SQL editor.
 export async function removeBusiness(id: string) {
-    // Performs a client-side cascade delete to ensure all related data is removed,
-    // bypassing foreign key constraint errors from a simple delete.
-    // An atomic RPC function would be a more robust long-term solution.
-
-    // 1. Find all barbers associated with this business to process them.
-    const { data: barbersToDelete, error: barbersError } = await supabase
-        .from('barbers')
-        .select('id')
-        .eq('businessId', id);
-
-    if (barbersError) {
-        console.error("Failed to fetch barbers for business deletion:", barbersError);
-        throw barbersError;
-    }
-
-    // 2. Delete all customer reports associated with the business.
-    const { error: reportError } = await supabase
-        .from('customer_reports')
-        .delete()
-        .eq('businessId', id);
-
-    if (reportError) {
-        console.error(`Failed to delete reports for business ${id}:`, reportError);
-        throw reportError;
-    }
-    
-    // There are no expenses tied to a business, so we can skip that.
-
-    // 3. Process each barber for deletion.
-    if (barbersToDelete && barbersToDelete.length > 0) {
-        for (const barber of barbersToDelete) {
-            // a. Delete all appointments for the barber.
-            await removeAppointmentsForBarber(barber.id);
-
-            // b. Delete the barber's auth user and profile via RPC.
-            // The existing removeBarber function does this.
-            await removeBarber(barber.id);
-        }
-    }
-
-    // 4. Finally, delete the business itself now that dependencies are gone.
-    const { error: businessError } = await supabase.from('businesses').delete().eq('id', id);
-    if (businessError) {
-        console.error("Failed to delete the business itself:", businessError);
-        throw businessError;
+    const { error } = await supabase.rpc('delete_business_and_dependents', { business_id_to_delete: id });
+    if (error) {
+        console.error("Failed to delete the business via RPC:", error);
+        throw error;
     }
 }
 
@@ -156,14 +121,18 @@ export async function getBarbers(): Promise<Barber[]> {
     if (!dbData) return [];
     
     // Safely transform the raw DB data to the application-level Barber type
-    return dbData.map(dbBarber => ({
-        ...dbBarber,
-        services: (dbBarber.services as unknown as Service[]) || [],
-        blockedSlots: (dbBarber.blockedSlots as unknown as BlockedSlot[]) || [],
-        scheduleOverrides: (dbBarber.scheduleOverrides as Record<string, { closed: boolean }>) || {},
-        timeOff: (dbBarber.timeOff as unknown as TimeOff[]) || [],
-        daily_location_overrides: (dbBarber.daily_location_overrides as Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null) || null,
-    }));
+    return dbData.map(dbBarber => {
+        // @ts-ignore
+        const { services, blockedSlots, scheduleOverrides, timeOff, dailyLocationOverrides, ...rest } = dbBarber as Database['public']['Tables']['barbers']['Row'];
+        return {
+            ...rest,
+            services: (services as unknown as Service[]) || [],
+            blockedSlots: (blockedSlots as unknown as BlockedSlot[]) || [],
+            scheduleOverrides: (scheduleOverrides as Record<string, { closed: boolean }>) || {},
+            timeOff: (timeOff as unknown as TimeOff[]) || [],
+            dailyLocationOverrides: (dailyLocationOverrides as Record<string, 'in-shop-exclusive' | 'on-location-exclusive'> | null) || null,
+        };
+    });
 }
 
 /**
@@ -189,7 +158,7 @@ export async function createBarber(credentials: SignUpCredentials, businessId: s
 export async function updateBarber(id: string, updates: BarberUpdate) {
     // The 'updates' object should already conform to the DB schema,
     // as BarberUpdate is now a direct alias for the DB update type.
-    const { error } = await supabase.from('barbers').update(updates as any).eq('id', id);
+    const { error } = await supabase.from('barbers').update(updates).eq('id', id);
     if (error) throw error;
 }
 
@@ -206,19 +175,22 @@ export async function getAppointments(): Promise<Appointment[]> {
     if (!dbData) return [];
 
     // Safely transform the `services` JSON column
-    return dbData.map(dbApt => ({
-        ...dbApt,
-        services: (dbApt.services as unknown as Service[]) || [],
-    }));
+    return dbData.map(dbApt => {
+        const { services, ...rest } = dbApt as Database['public']['Tables']['appointments']['Row'];
+        return {
+            ...rest,
+            services: (services as unknown as Service[]) || [],
+        };
+    });
 }
 
 export async function addAppointment(appointment: AppointmentInsert) {
-    const { error } = await supabase.from('appointments').insert([appointment] as any);
+    const { error } = await supabase.from('appointments').insert([appointment]);
     if (error) throw error;
 }
 
 export async function updateAppointment(id: string, updates: AppointmentUpdate) {
-    const { error } = await supabase.from('appointments').update(updates as any).eq('id', id);
+    const { error } = await supabase.from('appointments').update(updates).eq('id', id);
     if (error) throw error;
 }
 
@@ -237,11 +209,12 @@ export async function removeAppointmentsForBarber(barberId: string) {
 export async function getAppConfig(): Promise<AppConfig> {
     const { data, error } = await supabase.from('app_config').select('*').single();
     if (error) throw error;
-    return data as unknown as AppConfig;
+    // Assuming a single config row, so direct return is safe after a successful fetch.
+    return data as AppConfig;
 }
 
 export async function updateAppConfig(newConfig: AppConfigUpdate) {
-    const { error } = await supabase.from('app_config').update(newConfig as any).eq('id', 1); // Assuming config ID is always 1
+    const { error } = await supabase.from('app_config').update(newConfig).eq('id', 1); // Assuming config ID is always 1
     if (error) throw error;
 }
 
@@ -254,7 +227,7 @@ export async function getExpenses(): Promise<Expense[]> {
 }
 
 export async function addExpense(expense: ExpenseInsert) {
-    const { error } = await supabase.from('expenses').insert([expense] as any);
+    const { error } = await supabase.from('expenses').insert([expense]);
     if (error) throw error;
 }
 
@@ -267,14 +240,15 @@ export async function removeExpense(id: string) {
 export async function isCustomerBlocked(phone: string): Promise<boolean> {
     const { data, error } = await supabase
         .from('blocked_customers')
-        .select('is_blocked')
-        .eq('customer_phone', phone)
+        .select('isBlocked')
+        .eq('customerPhone', phone)
         .single();
     if (error && error.code !== 'PGRST116') { // Ignore 'exact one row' error if not found
         console.error("isCustomerBlocked error:", error);
         return false;
     }
-    return data?.is_blocked || false;
+    // @ts-ignore
+    return data ? data.isBlocked : false;
 }
 
 export async function handleNoShowCheck(customerPhone: string, blockLimit: number) {
@@ -290,32 +264,32 @@ export async function handleNoShowCheck(customerPhone: string, blockLimit: numbe
 }
 
 export async function getBlockedCustomers(): Promise<BlockedCustomer[]> {
-    const { data, error } = await supabase.from('blocked_customers').select('*').order('blocked_at', { ascending: false });
+    const { data, error } = await supabase.from('blocked_customers').select('*').order('blockedAt', { ascending: false });
     if (error) throw error;
     return data || [];
 }
 
 export async function unblockCustomer(phone: string) {
-    const updates: Database['public']['Tables']['blocked_customers']['Update'] = { is_blocked: false };
-    const { error } = await supabase.from('blocked_customers').update(updates as any).eq('customer_phone', phone);
+    const updates: Database['public']['Tables']['blocked_customers']['Update'] = { isBlocked: false };
+    const { error } = await supabase.from('blocked_customers').update(updates).eq('customerPhone', phone);
     if (error) throw error;
 }
 
 // --- Customer Reports API ---
 export async function getCustomerReports(): Promise<CustomerReport[]> {
-    const { data, error } = await supabase.from('customer_reports').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('customer_reports').select('*').order('createdAt', { ascending: false });
     if (error) throw error;
     return data || [];
 }
 
 export async function addCustomerReport(report: CustomerReportInsert) {
-    const { error } = await supabase.from('customer_reports').insert([report] as any);
+    const { error } = await supabase.from('customer_reports').insert([report]);
     if (error) throw error;
 }
 
 export async function updateCustomerReportStatus(id: string, status: ReportStatus) {
     const updates: Database['public']['Tables']['customer_reports']['Update'] = { status };
-    const { error } = await supabase.from('customer_reports').update(updates as any).eq('id', id);
+    const { error } = await supabase.from('customer_reports').update(updates).eq('id', id);
     if (error) throw error;
 }
 

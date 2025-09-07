@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import type { TranslationKey, Language } from '../translations';
 import { Barber, Appointment, Service, TimeOff, AppointmentStatus, AppConfig, BlockedSlot } from '../types';
@@ -188,7 +186,7 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
     setIsEditingDetails(false);
   }, [barber]);
   
-  const handleDetailChange = (field: keyof Omit<Barber, 'services' | 'timeOff'>, value: any) => {
+  const handleDetailChange = (field: keyof Barber, value: Barber[keyof Barber]) => {
     setEditableBarber(prev => ({ ...prev, [field]: value }));
   };
   
@@ -211,10 +209,14 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
   };
 
 
-  const handleServiceChange = (index: number, field: keyof Service, value: string | number) => {
+  const handleServiceChange = (index: number, field: keyof Service, value: string) => {
     const updatedServices = [...editableBarber.services];
     const serviceToUpdate = { ...updatedServices[index] };
-    (serviceToUpdate[field] as any) = (field === 'price' || field === 'duration') ? Number(value) : value;
+    if (field === 'price' || field === 'duration') {
+        serviceToUpdate[field] = Number(value);
+    } else if (field === 'name') {
+        serviceToUpdate[field] = value;
+    }
     updatedServices[index] = serviceToUpdate;
     setEditableBarber(prev => ({ ...prev, services: updatedServices }));
   };
@@ -240,14 +242,15 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
   const handleDaySettingsSave = (mode: 'default' | 'in-shop-exclusive' | 'on-location-exclusive') => {
       if (!selectedDateForSettings) return;
       const dateStr = selectedDateForSettings.toISOString().split('T')[0];
-      const newOverrides = { ...(editableBarber.daily_location_overrides || {}) };
+      // @ts-ignore
+      const newOverrides = { ...(editableBarber.dailyLocationOverrides || {}) };
 
       if (mode === 'default') {
           delete newOverrides[dateStr];
       } else {
           newOverrides[dateStr] = mode;
       }
-      handleDetailChange('daily_location_overrides', newOverrides);
+      handleDetailChange('dailyLocationOverrides', newOverrides);
   };
   
   const parseDateAsUTC = (date: Date) => {
@@ -388,7 +391,8 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
             isOpen={daySettingsModalOpen}
             onClose={() => setDaySettingsModalOpen(false)}
             onSave={handleDaySettingsSave}
-            currentMode={editableBarber.daily_location_overrides?.[selectedDateForSettings?.toISOString().split('T')[0] || ''] || 'default'}
+            // @ts-ignore
+            currentMode={editableBarber.dailyLocationOverrides?.[selectedDateForSettings?.toISOString().split('T')[0] || ''] || 'default'}
             date={selectedDateForSettings || new Date()}
         />
         <section className="mb-8 p-4 bg-white dark:bg-neutral-800 rounded-lg shadow">
@@ -578,7 +582,7 @@ const BarberDashboard: React.FC<BarberDashboardProps> = ({
                         <h4 className="font-semibold mb-2">{t('onLocationSettingsTitle')}</h4>
                         <div>
                             <label htmlFor="onLocationMode" className="block text-xs font-medium mb-1">{t('onLocationModeLabel')}</label>
-                            <select id="onLocationMode" value={editableBarber.onLocationMode} onChange={(e) => handleDetailChange('onLocationMode', e.target.value)} className={inputClasses}>
+                            <select id="onLocationMode" value={editableBarber.onLocationMode} onChange={(e) => handleDetailChange('onLocationMode', e.target.value as Barber['onLocationMode'])} className={inputClasses}>
                                 <option value="none">{t('onLocationMode_none')}</option>
                                 <option value="optional">{t('onLocationMode_optional')}</option>
                                 <option value="exclusive">{t('onLocationMode_exclusive')}</option>
